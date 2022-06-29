@@ -244,7 +244,6 @@ showstringspaces=false
 \newcommand\Vrai[0]{\ifthenelse{\boolean{lfrench}}{Vrai}{}\ifthenelse{\boolean{lenglish}}{True}{}}
 \newcommand\Faux[0]{\ifthenelse{\boolean{lfrench}}{Faux}{}\ifthenelse{\boolean{lenglish}}{False}{}}
 
-\documentclass{article}
 
 \ifthenelse{\boolean{lfrench}}{
 \usepackage[
@@ -272,15 +271,15 @@ showstringspaces=false
 
 \begingroup
 \thispagestyle{empty}
-\AddToShipoutPicture*{\put(0,0){\includegraphics[scale=.70]{Pictures/cover.jpeg}}} % Image background
+\AddToShipoutPicture*{\put(200,30){\includegraphics[scale=1]{Pictures/Cover.png}}} % Image background
 \centering
 \vspace*{5cm}
 \par\normalfont\fontsize{35}{35}\sffamily\selectfont
-\lgf{\textbf{PROGRAMMER L'INTERNET DES OBJETS }}
-\lge{\textbf{PROGRAMMING THE INTERNET OF THINGS }}
+\lgf{\textbf{LE LIVRE SUR SCHC}}
+\lge{\textbf{THE BOOK OF SCHC}}
 {\LARGE }\par % Book title
 \vspace*{1cm}
-{\Huge Laurent TOUTAIN}\par % Author name
+{\Huge Ivan MARTINEZ, Laurent TOUTAIN}\par % Author name
 \endgroup
 
 %----------------------------------------------------------------------------------------
@@ -339,28 +338,7 @@ showstringspaces=false
 
 %\setboolean{allchap}{true} % true: take all, false take nothing only /input
 
-
-
-\Input{Part00-liminaire}
-\Input{Part01.0-Intro}
-\Input{Part02.0-ArchiIP}
-\Input{Part02.5-Wireshark}
-\Input{Part03.0-Modbus}
-\Input{Part04.0-ArchiIoT}
-\Input{Part05.0-Data}
-\Input{Part06.0-VSensors}
-\Input{Part06.5-beebotte}
-\Input{Part07.0-LoPy}
-\input{Part08.0-Sigfox}
-\Input{Part09.0-LoRaWAN}
-\Input{Part10.0-CoAP}
-\Input{Part10.5-aiocoap}
-\Input{Part11.0-LwM2M}
-
-
-
-
-
+\Input{Part01-Rules.tex}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
