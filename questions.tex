@@ -1,0 +1,12 @@
+\textbf {Question 1.6.1{} page 16} {} 
+A quoi correspond la clé \texttt {'u' : 'Cel'} que l'on retrouve dans la structure précédente ? \vspace {1em}\newline 
+Unité = degrés Celcius\newline \newline 
+\textbf {Question 1.6.2{} page 16} {} 
+Dans les deux représentations JSON et CBOR, de combien la taille est-elle accrue par l'ajout des mesures effectuées ? d'où viennent ces différences ?\vspace {1em}\newline 
+ Si l'on regarde le listing précédent, l'ajout des trois mesures fait augmenter la taille de 141 octets pour JSON et 84 pour CBOR. La différence vient de l'utilisation de nombre plus que de chaînes de caractères pour les clés. Ainsi 't' demande 3 caractères en JSON avec les guillemets, codé en CBOR, il faudrait 2 octets, un nombre inférieur à 23 se code sur un seul octet. Il y a egalement les virgules, espaces et fermeture de crochets qui ne sont pas présent en CBOR. Les nombres flottant comme \texttt {19.98} ont une représentation plus compacte en JSON (5 octets) qu'en CBOR où ils consomment 9 octets. Dans tous les cas l'accroissement est fortement dépendant du nom des éléments. Ici, il faut répéter à chaque fois \texttt {temperature}, \texttt {humidity} et \texttt {pressure}, soit 26 caractères. \newline \newline 
+\textbf {Question 1.6.3{} page 16} {} 
+Si on ne s'intéressait qu'à une seule grandeur, par exemple l'humidité. A quoi ressemblerait la structure SenML en JSON ?\vspace {1em}\newline 
+ Chaque nouvelle entrée ajoute 35 octets à la structure~: [\{'bn': 'device1', 'bt': 1640110457.0, 'n': 'humidty', 'u': '\%RH', 'v': 28.46\},\\ \{'t': 10.0, 'v': 26.86\},\\ \{'t': 20.0, 'v': 26.96\},\\ \{'t': 30.0, 'v': 27.01\}]\\ \newline \newline 
+\textbf {Question 1.6.4{} page 18} {} 
+ Pourrait-on utiliser le champ SenML \textit {base value} pour diminuer la taille des données de pression atmosphérique~? \vspace {1em}\newline 
+ Cela serait possible, si cette ressource était envoyée seule. \newline \newline 
