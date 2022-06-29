@@ -1,0 +1,141 @@
+\begin{lstlisting}[basicstyle=\ttfamily\tiny, numbers=none]
+schc recv-from-l3 None None
+schc parser {('IPV6.VER', 1): [6, 4],  ('IPV6.TC', 1): [0, 8],  ('IPV6.FL', 1): [749668, 20], 
+            ('IPV6.LEN', 1): [58, 16, 'fixed'], ('IPV6.NXT', 1): [58, 8, 'fixed'], 
+            ('IPV6.HOP_LMT', 1): [46, 8, 'fixed'], 
+            ('IPV6.APP_PREFIX', 1): [b'*\x01\x0e\n\x01\xa6\x1c\xe0', 64], 
+            ('IPV6.APP_IID', 1): [b'\xd6\x0fN\x05\xd1z\x14\xcd', 64], 
+            ('IPV6.DEV_PREFIX', 1): [b' \x01\x04p\x1f!\x01\xd2', 64], 
+            ('IPV6.DEV_IID', 1): [b'\x00\x00\x00\x00\x00\x00\x00\x02', 64], 
+            ('ICMPV6.TYPE', 1): [128, 8], ('ICMPV6.CODE', 1): [0, 8], ('ICMPV6.CKSUM', 1): [26192, 16], 
+            ('ICMPV6.IDENT', 1): [2, 16], ('ICMPV6.SEQNO', 1): [1, 16]}
+
+schc compression rule {'RuleID': 6, 'RuleIDLength': 3, 
+                        'Compression': [{'FID': 'IPV6.VER', 'FL': 4, 'FP': 1, 'DI': 'BI', 'TV': 6, 'MO': 'EQUAL', 
+                        'CDA': 'NOT-SENT'}, ... }
+
+schc compression result b\xc5\x40\x21\xc1\x40\x34\xc3\x9c\x1a\xc1\xe9\xc0\xba\x2f\x42\x99\xa0\x00\x40\x00\x31\x38
+                          \x8a\xcc\x40\x00\x00\x00\x0d\x51\x20\xc0\x00\x00\x00\x00\x02\x02\x22\x42\x62\x82\xa2\xc2
+                          \xe3\x03\x23\x43\x63\x83\xa3\xc3\xe4\x04\x24\x44\x64\x84\xa4\xc4\xe5\x05\x25\x45\x65\x85
+                          \xa5\xc5\xe6\x06\x20/563
+                          
+schc fragmentation rule {'RuleID': 12, 'RuleIDLength': 11, 'Fragmentation': {'FRDirection': 'DW', 'FRMode': 'NoAck', ...}
+
+MTU =  56
+
+r:12/11 (noA) DTAG=0 W=- FCN=All-0
+|---- 25------------->
+frag_send.py, args: (bytearray(b'\x01\x80\xc5@!\xc1@4\xc3\x9c\x1a\xc1\xe9\xc0\xba/B\x99\xa0\x00@\x0018\x8a'), 
+                    'udp:54.37.158.10:8888', None)
+
+Queue running event -> 1, callback -> send_packet
+MTU =  56
+r:12/11 (noA) DTAG=0 W=- FCN=All-0
+|---- 25------------->
+frag_send.py, args: (bytearray(b'\x01\x80\xcc@\x00\x00\x00\rQ \xc0\x00\x00\x00\x00\x02\x02"Bb\x82\xa2\xc2\xe3\x03'), 
+                    'udp:54.37.158.10:8888', None)
+Queue running event -> 2, callback -> send_frag
+Queue running event -> 3, callback -> event_sent_frag
+Queue running event -> 4, callback -> send_packet
+MTU =  56
+r:12/11 (noA) DTAG=0 W=- FCN=All-0
+|---- 25------------->
+frag_send.py, args: (bytearray(b'\x01\x80#Cc\x83\xa3\xc3\xe4\x04$Dd\x84\xa4\xc4\xe5\x05%Ee\x85\xa5\xc5\xe6'), 
+                    'udp:54.37.158.10:8888', None)
+frag_send.py, _session_id:  udp:54.37.158.10:8888
+Queue running event -> 5, callback -> send_frag
+Queue running event -> 6, callback -> event_sent_frag
+Queue running event -> 7, callback -> send_packet
+MTU =  56
+SessionManager: deleted ('udp:54.37.158.10:8888', 12, 11, 0)
+MIC Size =  32
+r:12/11 (noA) DTAG=0 W=- FCN=All-1
+|----  8------------->
+frag_send.py, args:  (bytearray(b'\x01\x87x\x10\xdc_\x06 '), 'udp:54.37.158.10:8888', None)
+frag_send.py, _session_id:  udp:54.37.158.10:8888
+Queue running event -> 8, callback -> send_frag
+Queue running event -> 9, callback -> send_packet
+tunneled SCHC msg
+other end = udp:54.37.158.10:8888
+			----------- 25--------->|
+New reassembly session created ReassemblerNoAck
+frag data
+			r:13/11 (noA) DTAG=0 W=- FCN=All-0
+CANCEL Inactivity Timer None
+[b'\xc5\x40\x21\xc1\x40\x34\xc3\x9c\x1a\xc1\xe9\xc0\xba\x2f\x42\x99\xa0\x00\x40\x00\x31\x38\x8a'/184]
+tunneled SCHC msg
+other end = udp:54.37.158.10:8888
+			----------- 25--------->|
+Reassembly session found ReassemblerNoAck
+frag data
+			r:13/11 (noA) DTAG=0 W=- FCN=All-0
+CANCEL Inactivity Timer 10
+[b'\xc5\x40\x21\xc1\x40\x34\xc3\x9c\x1a\xc1\xe9\xc0\xba\x2f\x42\x99\xa0\x00\x40\x00\x31\x38\x8a'/184, 
+b'\xcc\x40\x00\x00\x00\x0d\x51\x20\xc0\x00\x00\x00\x00\x02\x02\x22\x42\x62\x82\xa2\xc2\xe3\x03'/184]
+tunneled SCHC msg
+other end = udp:54.37.158.10:8888
+			----------- 25--------->|
+Reassembly session found ReassemblerNoAck
+frag data
+			r:13/11 (noA) DTAG=0 W=- FCN=All-0
+CANCEL Inactivity Timer 11
+[b'\xc5\x40\x21\xc1\x40\x34\xc3\x9c\x1a\xc1\xe9\xc0\xba\x2f\x42\x99\xa0\x00\x40\x00\x31\x38\x8a'/184, 
+ b'\xcc\x40\x00\x00\x00\x0d\x51\x20\xc0\x00\x00\x00\x00\x02\x02\x22\x42\x62\x82\xa2\xc2\xe3\x03'/184, 
+ b'\x23\x43\x63\x83\xa3\xc3\xe4\x04\x24\x44\x64\x84\xa4\xc4\xe5\x05\x25\x45\x65\x85\xa5\xc5\xe6'/184]
+tunneled SCHC msg
+other end = udp:54.37.158.10:8888
+			-----------  8--------->|
+Reassembly session found ReassemblerNoAck
+frag data
+			r:13/11 (noA) DTAG=0 W=- FCN=All-1
+CANCEL Inactivity Timer 12
+[b'\xc5\x40\x21\xc1\x40\x34\xc3\x9c\x1a\xc1\xe9\xc0\xba\x2f\x42\x99\xa0\x00\x40\x00\x31\x38\x8a'/184, 
+ b'\xcc\x40\x00\x00\x00\x0d\x51\x20\xc0\x00\x00\x00\x00\x02\x02\x22\x42\x62\x82\xa2\xc2\xe3\x03'/184, 
+ b'\x23\x43\x63\x83\xa3\xc3\xe4\x04\x24\x44\x64\x84\xa4\xc4\xe5\x05\x25\x45\x65\x85\xa5\xc5\xe6'/184, 
+ b'\x06\x20'/16]
+----------------------- Final Reassembly -----------------------
+ALL1 received
+b'c54021c14034c39c1ac1e9c0ba2f4299a000400031388acc400000000d5120c000000000020222426282a2c2e30323436
+  383a3c3e40424446484a4c4e50525456585a5c5e60620'
+  
+SUCCESS: MIC matched. packet bytearray(b'x\x10\xdc_') == result b'x\x10\xdc_'
+----------------------- Decompression -----------------------
+SessionManager: deleted (None, 13, 11, 0)
+###[ IPv6 ]### 
+  version   = 6
+  tc        = 0
+  fl        = 0
+  plen      = None
+  nh        = ICMPv6
+  hlim      = 255
+  src       = 2001:470:1f21:1d2::2
+  dst       = 2a01:e0a:1a6:1ce0:d60f:4e05:d17a:14cd
+###[ ICMPv6 Echo Reply ]### 
+     type      = Echo Reply
+     code      = 0
+     cksum     = None
+     id        = 0x2
+     seq       = 0x1
+     data      = bytearray(b'\x89\xc4Vb\x00\x00\x00\x00j\x89\x06\x00\x00\x00\x00\x00\x10\x11\x12\x13...')
+
+.
+Sent 1 packets.
+schc recv-from-l3 None None
+schc parser {('IPV6.VER', 1): [6, 4], ('IPV6.TC', 1): [0, 8], 
+             ('IPV6.FL', 1): [0, 20], ('IPV6.LEN', 1): [58, 16, 'fixed'], 
+             ('IPV6.NXT', 1): [58, 8, 'fixed'], ('IPV6.HOP_LMT', 1): [255, 8, 'fixed'],
+             ('IPV6.APP_PREFIX', 1): [b' \x01\x04p\x1f!\x01\xd2', 64], 
+             ('IPV6.APP_IID', 1): [b'\x00\x00\x00\x00\x00\x00\x00\x02', 64], 
+             ('IPV6.DEV_PREFIX', 1): [b'*\x01\x0e\n\x01\xa6\x1c\xe0', 64], 
+             ('IPV6.DEV_IID', 1): [b'\xd6\x0fN\x05\xd1z\x14\xcd', 64], 
+             ('ICMPV6.TYPE', 1): [129, 8], ('ICMPV6.CODE', 1): [0, 8], 
+             ('ICMPV6.CKSUM', 1): [25936, 16], ('ICMPV6.IDENT', 1): [2, 16], 
+             ('ICMPV6.SEQNO', 1): [1, 16]} 
+             
+schc compression rule None
+schc no-compression rule None
+schc rule for compression/no-compression not found
+\
+.
+Sent 1 packets.
+\end{lstlisting}

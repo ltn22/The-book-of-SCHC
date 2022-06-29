@@ -1,0 +1,39 @@
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize, numbers=none]
+****************************************
+Device: udp:54.37.158.10:8888
+/-------------------------\
+|Rule 6/3            110  |
+|---------------+---+--+--+------------------------------+-------------+----------------\
+|IPV6.VER       |  4| 1|BI|                             6|EQUAL        |NOT-SENT        |
+|IPV6.TC        |  8| 1|BI|                             0|EQUAL        |NOT-SENT        |
+|IPV6.FL        | 20| 1|BI|                             0|IGNORE       |NOT-SENT        |
+|IPV6.LEN       | 16| 1|BI|------------------------------|IGNORE       |COMPUTE-LENGTH  |
+|IPV6.NXT       |  8| 1|BI|                            58|EQUAL        |NOT-SENT        |
+|IPV6.HOP_LMT   |  8| 1|BI|                           255|IGNORE       |NOT-SENT        |
+|IPV6.DEV_PREFIX| 64| 1|BI|              200104701f2101d2|EQUAL        |NOT-SENT        |
+|IPV6.DEV_IID   | 64| 1|BI|              0000000000000002|EQUAL        |NOT-SENT        |
+|IPV6.APP_PREFIX| 64| 1|BI|------------------------------|IGNORE       |VALUE-SENT      |
+|IPV6.APP_IID   | 64| 1|BI|------------------------------|IGNORE       |VALUE-SENT      |
+|ICMPV6.TYPE    |  8| 1|DW|                           128|EQUAL        |NOT-SENT        |
+|ICMPV6.TYPE    |  8| 1|UP|                           129|EQUAL        |NOT-SENT        |
+|ICMPV6.CODE    |  8| 1|BI|                             0|EQUAL        |NOT-SENT        |
+|ICMPV6.CKSUM   | 16| 1|BI|                             0|IGNORE       |COMPUTE-CHECKSUM|
+|ICMPV6.IDENT   | 16| 1|BI|                             0|IGNORE       |VALUE-SENT      |
+|ICMPV6.SEQNO   | 16| 1|BI|                             0|IGNORE       |VALUE-SENT      |
+\---------------+---+--+--+------------------------------+-------------+----------------/
+/-------------------------\
+|Rule 12/11     00001100  |
+!=========================+=============================================================\
+!v Fragmentation mode : NoAck    header dtag 2 Window  0 FCN  3                     DW v!
+!v No Tile size specified                                                              v!
+!v RCS Algorithm: crc32                                                                v!
+\=======================================================================================/
+/-------------------------\
+|Rule 13/11     00001101  |
+!=========================+=============================================================\
+!^ Fragmentation mode : NoAck    header dtag 2 Window  0 FCN  3                     UP ^!
+!^ No Tile size specified                                                              ^!
+!^ RCS Algorithm: crc32                                                                ^!
+\=======================================================================================/
+/
+\end{lstlisting}

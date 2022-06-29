@@ -1,0 +1,50 @@
+\begin{tikzpicture}[xscale = 0.95, yscale = 0.95,transform shape,>=stealth',thick,
+commentl/.style={text width=2.5cm, align=right, scale=.6},
+commentr/.style={commentl, align=left}]
+
+\node[] (init) {\textbf{Transmitter}};
+\node[right=1.2cm of init] (core) {\textbf{Receiver}};
+\node[right=0.4cm of init] (middle) {};
+
+\draw[->] ([yshift=-0.5cm]init.south) coordinate (f1) -- ([yshift=-.2cm]f1-|core)
+coordinate (fin1) node[pos=.5, above, sloped, scale=0.7] {FCN = 0};
+\node[left = 2mm of f1.west, commentl]{Frag 1};
+
+\draw[->] ([yshift=-1cm]init.south) coordinate (f2) -- ([yshift=-.7cm]f1-|core)
+coordinate (fin2) node[pos=.5, above, sloped, scale=0.7] {FCN = 0};
+\node[left = 2mm of f2.west, commentl]{Frag 2};
+
+\draw[->] ([yshift=-1.5cm]init.south) coordinate (f3) -- ([yshift=-1.2cm]f1-|core)
+coordinate (fin3) node[pos=.5, above, sloped, scale=0.7] {FCN = 0};
+\node[left = 2mm of f3.west, commentl]{Frag 3};
+
+\draw[->] ([yshift=-2.5cm]init.south) coordinate (f4) -- ([yshift=-2.2cm]f1-|core)
+coordinate (fin4) node[pos=.5, above, sloped, scale=0.7] {FCN = 0};
+\node[left = 2mm of f4.west, commentl]{Frag n-1};
+
+\draw[->] ([yshift=-3cm]init.south) coordinate (f5) -- ([yshift=-2.7cm]f1-|core)
+coordinate (fin5) node[pos=.5, above, sloped, scale=0.7] {FCN = 1 + RCS};
+\node[left = 2mm of f5.west, commentl]{\textbf{Last Frag}};
+
+\node[right = 3.45cm of f5.east, commentr, yshift=-0.4cm]{\textbf{CRC check}};
+
+
+% dots
+
+\node[scale=0.8] at ([yshift=-1.9cm]middle.south)  {\textbf{.}};
+\node[scale=0.8] at ([yshift=-2.1cm]middle.south)  {\textbf{.}};
+\node[scale=0.8] at ([yshift=-2.3cm]middle.south)  {\textbf{.}};
+
+%% vertical dotted time-out
+%\draw[dotted] ([yshift=-0.5cm]init.255)--([yshift=-0.1cm]init.255|-ack1e);
+% Texts
+%\node[left = 2mm of f1.west, commentl]{\textbf{SEND FRAG 1}};%\\[-1mm]{\itshape start time-out}};
+%\node[left = 2mm of ack1e.west, yshift=-.3cm, commentl]{{\itshape end time-out}\\ \textbf{ACK 1 \\ RECEIVED}};
+%\node[right = 2mm of fin1e.west, commentr]{\textbf{MSG 1 \\ RECEIVED}\\[-1mm]{\itshape sending ACK}};
+
+\node[scale=0.8] at (0, -2.7cm) (a) {};
+% Drawing vertical time lines 
+\draw[thick, shorten >=-1cm] (init) -- (init|-a);
+\draw[thick, shorten >=-1cm] (core) -- (core|-a);
+
+\end{tikzpicture}

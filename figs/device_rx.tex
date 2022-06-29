@@ -1,0 +1,95 @@
+\usetikzlibrary{shadows,arrows.meta,positioning,backgrounds,fit}
+
+\usetikzlibrary{shapes}
+\usetikzlibrary{shapes.callouts}
+\usetikzlibrary{shapes.geometric}
+
+\usetikzlibrary{arrows}
+\usetikzlibrary{decorations}
+\usetikzlibrary{snakes}
+\usetikzlibrary{calc}
+\usetikzlibrary{patterns}
+
+\usetikzlibrary{matrix,patterns,chains}
+\usetikzlibrary{arrows,automata}
+\usetikzlibrary{mindmap,trees}
+\usetikzlibrary{shapes,snakes}
+\usetikzlibrary{circuits.logic.US}
+\usetikzlibrary{calc,intersections}
+
+\tikzset{input/.style=coordinate}
+\tikzset{output/.style=coordinate}
+\tikzset{
+  % coord node style is used for placing corners of connecting lines
+  coord/.style={coordinate, on chain, on grid, node distance=6mm and 25mm},
+  test/.style={draw, diamond, aspect=2, text width=5em},
+  block/.style={draw, rectangle,
+  minimum height=3em,
+  minimum width=7em}}
+  
+\tikzset{pinstyle/.style={pin edge={to-,thin,black}}}
+
+\begin{tikzpicture}[%auto, node distance=2cm,>=latex',
+    xscale=0.8,
+    yscale=0.8,
+    transform shape,
+    >=latex,              % Nice arrows; your taste may be different
+    start chain=going below,    % General flow is top-to-bottom
+    node distance=6mm and 60mm, % Global setup of box spacing
+    every join/.style={norm},   % Default linetype for connecting boxes
+    ]
+
+\node (input) [input] {\textit{start}};
+
+\node (start) [below right] at (input.south) {transmitter starts};
+
+\node (rx) [block, below, align=left] at (start.south west)
+{SCHC Pkt Rx.};
+
+\node (selectf) [test, below, align=left, yshift=-1.5em] at (rx.south)
+{F in SoR ?};
+
+\node [coord, right=of selectf] (non)  {}; %coordinates for the non path
+
+\path (selectf.west) to node [near start, yshift = 0.5em, xshift = -3em] {$n$} (non); 
+\path (selectf.south) to node [near start, xshift = 0.5em, yshift = -0.5em] {$y$} (selectf);
+
+\node (reas) [block, below, align=left, yshift=-1.5em] at (selectf.south)
+{Reassembly};
+
+\node (selectc) [test, below, align=left, yshift=-1.5em] at (reas.south)
+{C in SoR ?};
+\node [coord, right=of selectc] (non)  {}; %coordinates for the non path
+\path (selectc.east) to node [near start, yshift = 0.5em] {$n$} (non1); 
+\path (selectc.south) to node [near start, xshift = 0.5em, yshift = -0.5em] {$y$} (selectc);
+
+
+\node (decomp) [block, below, align=left, yshift=-1.5em] at (selectc.south)
+{Decompression};
+
+\node [coord, right=of decomp] (non1)  {}; %coordinates for the non path
+
+
+\node (query) [block, below, align=left, yshift=-1.5em] at (decomp.south)
+{ICMPv6 Query};
+
+\node (resp) [block, below, align=left, yshift=-1.5em] at (query.south)
+{Echo App.};
+
+\draw [->] (input) --  (rx);    
+\draw [->] (rx.south) -- (selectf);
+\draw [->] (selectf.south) --  (reas);
+\draw [->] (reas.south) --  (selectc);
+\draw [->] (selectc.south) --  (decomp);
+\draw [->] (decomp.south) --  (query);
+\draw [->] (query.south) --  (resp);
+
+\coordinate (fb) at ($(selectf.west)-(2em,0)$); %fb -- feedback
+\draw [->] (selectf.west) -| (fb) |- (selectc.west);
+
+\coordinate (fb1) at ($(selectc.east)+(2em,0)$); %fb -- feedback
+\draw [->] (selectc.east) -| (fb1) |- (rx.east);
+
+\node (label) [below, yshift = - 0.3em] at (resp.south) {(b)};
+
+\end{tikzpicture}
