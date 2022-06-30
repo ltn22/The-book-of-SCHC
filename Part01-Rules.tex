@@ -1,27 +1,26 @@
-
-\chapter{Introduction}
+\chapter{Getting started}
 
 OpenSCHC offers an easy way to understand and experiment the compression/decompression mechanism as well as the fragmentation protocol. OpenSCHC does not require to run on a LPWAN network, experiments can run on a regular network.
 
 
-\chapter{Installation}\label{chap-plat}
+\section{Installation}\label{chap-plat}
 
-\section{Download code}
+\subsection{Download code}
 
 To download openSCHC, just clone the openschc repository on github.
 
 
-\begin{lstlisting}
+\begin{termc}[backgroundcolor=\color{gray!10}, basicstyle=\ttfamily\small, escapechar=@]
 > git clone git@github.com:openschc/openschc.git
-\end{lstlisting}
+\end{termc}
 
 and use the scapy branch.
 
-\begin{lstlisting}
+\begin{termc}[backgroundcolor=\color{gray!10}, basicstyle=\ttfamily\small, escapechar=@]
 > git checkout scapy
-\end{lstlisting}
+\end{termc}
 
-\section{Setup the environment}
+\subsection{Setup the environment}
 
 For testing SCHC, we are going to generate some IPv6 packets, that will be caught by scapy and processed. 
 
@@ -39,7 +38,7 @@ Once the tunnel created, you will find some configuration examples, that will he
 
 For ubuntu 20, it will be in the /etc/netplan directory:
 
-\begin{lstlisting}
+\begin{termc}[backgroundcolor=\color{gray!10}, basicstyle=\ttfamily\small, escapechar=@]
 > cat /etc/netplan/50-cloud-init.yaml
 # This file is generated from information provided by
 # the datasource.  Changes to it will not persist across an instance.
@@ -65,11 +64,13 @@ network:
        addresses:
          - "2001:470:1f20:1d2::2/64"
        gateway6: "2001:470:1f20:1d2::1"
-\end{lstlisting}
+\end{termc}
 
 and your machine interfaces looks the following:
 
-\begin{lstlisting}
+
+
+\begin{termc}[backgroundcolor=\color{gray!10}, basicstyle=\ttfamily\small, escapechar=@]
 > ifconfig
 ens3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
         inet 51.91.121.182  netmask 255.255.255.255  broadcast 0.0.0.0
@@ -98,7 +99,7 @@ lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
         RX errors 0  dropped 0  overruns 0  frame 0
         TX packets 7212  bytes 657864 (657.8 KB)
         TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
-\end{lstlisting}
+\end{termc}
 
 Note that the machine is multi-homed; \texttt{ens3} interface is configured with the regular IPv6 address and \texttt{he-ipv6} with the Hurricane Electric IPv6 address. 
 
@@ -238,13 +239,12 @@ The rule manager plays an important role in openSCHC. It has different goals:
     \item find a rule from its rule ID.
 \end{itemize}
 
-
 \subsection{Rule definition}
 
 The above listing gives a simple python program used to manage the two rules we described before. 
 
 
-\begin{lstlisting}[language=Python]
+\begin{termc}[backgroundcolor=\color{gray!10}, basicstyle=\ttfamily\small, escapechar=@, language=Python]
 from gen_rulemanager import *
 
 RM = RuleManager()
@@ -268,14 +268,14 @@ RM.Add(dev_info=rule1100)
 RM.Add(dev_info=rule001100)
 
 RM.Print()
-\end{lstlisting}
+\end{termc}
 
 ~~
 
 
 OpenSCHC displays:
 
-\begin{lstlisting}[ basicstyle=\ttfamily\tiny]
+\begin{termc}[backgroundcolor=\color{gray!10}, basicstyle=\ttfamily\tiny, escapechar=@]
 ****************************************
 Device: None
 /-------------------------\
@@ -289,16 +289,17 @@ Device: None
 !^ No Tile size specified                                                              ^!
 !^ RCS Algorithm: crc32                                                                ^!
 \=======================================================================================/
-\end{lstlisting}
+\end{termc}
 
 Compression rules contain the field descriptions (here absent) and Fragmentation rules contain the fragmentation parameters. The rule manager added some default parameters corresponding to noAck behavior.
+
 
 
 \subsection{Set of rules}
 
 A device should contain a set of rules related to compression and fragmentation. In OpenSCHC, the SoR (Set of Rules) is a JSON array. The following program has the same behavior as the previous one.:
 
-\begin{lstlisting}[language=Python]
+\begin{termc}[backgroundcolor=\color{gray!10}, basicstyle=\ttfamily\small, escapechar=@, language=Python]
 from gen_rulemanager import *
 
 RM = RuleManager()
@@ -321,7 +322,7 @@ rule001100 =   {
 RM.Add(dev_info=[rule1100, rule001100])
 
 RM.Print()
-\end{lstlisting}
+\end{termc}
 
 \subsection{Device identifier}
 
@@ -336,27 +337,28 @@ The device identifier is structured as a technology and an identifier in that te
 
 Rules associated with a Device ID can be directly stored into the rule manager through the Add() method as follows:
 
-\begin{lstlisting}[language=Python]
+\begin{termc}[backgroundcolor=\color{gray!10}, basicstyle=\ttfamily\small, escapechar=@, language=Python]
 RM.Add(device="1234567890", dev_info=[rule1100, rule001100])
-\end{lstlisting}
+\end{termc}
 
 Alternately, the JSON structure would be the following:
 
-\begin{lstlisting}[language=Python]
+\begin{termc}[backgroundcolor=\color{gray!10}, basicstyle=\ttfamily\small, escapechar=@]
 {
     "DeviceID": 1234567890,
     "SoR" : [ ..... ]
 }
-\end{lstlisting}
-
+\end{termc}
 
 \subsection{JSON file}
 
 Rules can also be stored in a JSON file, the Rule Manager\texttt{Add} method uses the \texttt{file} argument. For instance:
 
-\begin{lstlisting}[language=Python]
+\begin{termc}[backgroundcolor=\color{gray!10}, basicstyle=\ttfamily\small, escapechar=@, language=Python]
 rm.Add(file="icmp.json")
-\end{lstlisting}
+\end{termc}
+
+
 
 \chapter{Compressing Ping6}
 
@@ -364,7 +366,7 @@ rm.Add(file="icmp.json")
 
 In this chapter, we are going to setup the compression of a ping6 request. An ICMPv6 request is composed of an IPv6 header, followed by a ICMPv6 request message.
 
-\begin{lstlisting}[ basicstyle=\ttfamily\tiny]
+\begin{termc}[backgroundcolor=\color{gray!10}, basicstyle=\ttfamily\tiny, escapechar=@]
 Internet Protocol Version 6, Src: 2a01:cb08:903a:bd00:a8c4:5c6d:c2b5:84be, Dst: 
 2001:470:1f21:1d2::1
     0110 .... = Version: 6
@@ -394,11 +396,11 @@ Internet Control Message Protocol v6
 0010  a8 c4 5c 6d c2 b5 84 be 20 01 04 70 1f 21 01 d2   ..\m.... ..p.!..
 0020  00 00 00 00 00 00 00 01 80 00 39 82 70 ef 02 bb   ..........9.p...
 0030  60 9a b0 db 00 0a ec b7  
-\end{lstlisting}
+\end{termc}
 
 The following compression rule can be applied to that traffic.
 
-\begin{lstlisting}[basicstyle=\ttfamily\tiny, caption={rule 6/3 for ping traffic}, caption=fig-rule-ping]
+\begin{lstlisting}[basicstyle=\ttfamily\tiny, caption={rule 6/3 for ping traffic}, caption=fig-rule-ping, backgroundcolor=\color{yellow}]
 
 {
     "DeviceID" : "udp:83.199.24.39:8888",
@@ -429,6 +431,8 @@ The following compression rule can be applied to that traffic.
 	} ] }
 	
 \end{lstlisting}
+
+
 
 \section{Understanding compression rules}
 
@@ -462,7 +466,7 @@ When a rule is selected, the Compression Actions (CDA} are applied to the packet
 \item \texttt{mapping-sent} : the index in the array is sent as residue. The decompressor will use the idenx to recover the value. This CDA can only be used with a match-mapping MO.
 \item \texttt{compute-*}: the \texttt{FV} is not sent, the decompressor will use a specific algorithm to recover the value, such as compute the length or compute a checksum.
 \end{itemize}
-	
+
 \section{Compressing an ICMPv6 echo request packet}
 
 In the above example, the \texttt{IPV6.VERSION} field is not sent, the value 6 is stored is the rule. 
@@ -546,79 +550,17 @@ Figure~\vref{fig-schc-archi} gives the architecture of the ping gateway.
 Scapy \textit{sniff} function gets traffic on the network. 
 This traffic is composed of IPv6 packets that could be compressed and tunneled SCHC packets that are decompressed. 
 
+
+
 \subsection{The code}
-\label{sec:compr_code}
+\label{sec-compr-code}
 
 The scapy module calls the SCHC Machine, in charge of CD-FR processes. Layer 2 allows to send decompressed packet or a SCHC packet on the network. 
 
-~~
-\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize, caption={Program ping\_core1.py}, label=prog-ping-core1]
-import sys
-# insert at 1, 0 is the script path (or '' in REPL)
-sys.path.insert(1, '../../src/')
-
-from scapy.all import *
-
-import gen_rulemanager as RM
-from protocol import SCHCProtocol
-from scapy_connection import *
-from gen_utils import dprint, sanitize_value
-
-import pprint
-import binascii
-import socket
-import ipaddress
 
 
-# Create a Rule Manager and upload the rules.
-rm = RM.RuleManager()
-rm.Add(file="icmp1.json")
-rm.Print()
+\pythonlst{ping_core1.py}
 
-def processPkt(pkt):
-    """ called when scapy receives a packet, since this function takes only 
-    one argument, schc_machine and scheduler must be specified as a global variable.
-    """
-
-    scheduler.run(session=schc_machine)
-
-    # look for a tunneled SCHC pkt
-    if pkt.getlayer(Ether) != None: #HE tunnel do not have Ethernet
-        e_type = pkt.getlayer(Ether).type
-        if e_type == 0x0800:
-            ip_proto = pkt.getlayer(IP).proto
-            if ip_proto == 17:
-                udp_dport = pkt.getlayer(UDP).dport
-                if udp_dport == socket_port: # tunnel SCHC msg to be decompressed
-                    print ("tunneled SCHC msg")                    
-                    schc_pkt, addr = tunnel.recvfrom(2000)
-                    other_end = "udp:"+addr[0]+":"+str(addr[1])
-                    print("other end =", other_end)
-                    r = schc_machine.schc_recv(other_end, schc_pkt)
-                    print (r)
-            elif ip_proto==41:
-                schc_machine.schc_send(bytes(pkt)[34:])
-
-# Start SCHC Machine
-POSITION = T_POSITION_CORE
-
-socket_port = 0x5C4C
-tunnel = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-tunnel.bind(("0.0.0.0", socket_port))
-
-lower_layer = ScapyLowerLayer(position=POSITION, socket=tunnel, other_end=None)
-system = ScapySystem()
-scheduler = system.get_scheduler()
-schc_machine = SCHCProtocol(
-    system=system,           # define the scheduler
-    layer2=lower_layer,      # how to send messages
-    role=POSITION,            # DEVICE or CORE
-    verbose = True)           
-schc_machine.set_rulemanager(rm)
-
-sniff(prn=processPkt, iface="ens3") # scappy cannot read multiple interfaces
-
-\end{lstlisting}
 
 This program~\vref{prog-ping-core1} shows how to compress ICMPv6 packets and send them on a UDP tunnel to a device. It starts with the modules importation from scapy, openSCHC and some regular python modules. Note the importation of the \texttt{scapy\_connection} module, located on the working directory. This module implements the scheduler and the methods to send packets.
 
@@ -791,7 +733,7 @@ listening on ens3, link-type EN10MB (Ethernet), capture size 262144 bytes
 	0x0030:  0c13 fbb5 8000 d951 80                   .......Q.
 
 \end{lstlisting}
- 
+
 \section{The Decompression Process}
 
 \subsection{Decompression}
@@ -985,7 +927,6 @@ schc_machine.set_rulemanager(rm)
 sniff(prn=processPkt, iface="en0") # scappy cannot read multiple interfaces
 
 \end{lstlisting}
-
 \section{Generating packets}
 
 Now, the SCHC core instance receives SCHC packets from the device, in the tunnel. 
@@ -1174,11 +1115,11 @@ Then, as shown in Figure~\ref{fig:icmpv6_query} the whole process goes as follow
   \centering
     \input{figs/device_rx}
   \end{minipage}
-\caption{ICMPv6 Query Reception when MTU exceeds L2 MTU: (a) Receiver behaviour, (b) Transmitter behaviour.}    \label{fig:icmpv6_query}
+\caption{ICMPv6 Query Reception when MTU exceeds L2 MTU: (a) Receiver behaviour, (b) Transmitter behaviour.}    \label{fig-icmpv6_query}
 \end{figure}
 
 \begin{itemize}
-    \item ICMPv6 Echo Request Query Reception at core (Figure.\ref{fig:icmpv6_query}(a))
+    \item ICMPv6 Echo Request Query Reception at core (Figure.\ref{fig-icmpv6_query}(a))
 \begin{enumerate}
     \item An user send a ICMPv6 Echo request exceeding the maximum MTU allowed.
     \item The request arrives at the core side. It verifies if there is a compression rule on its SoR applicable to this specific traffic.
@@ -1219,7 +1160,6 @@ Then, as shown in Figure~\ref{fig:icmpv6_query} the whole process goes as follow
 \end{enumerate}
 \end{itemize}
 
-
 \section{Fragmentation in No-ACK mode}
 
 This fragmentation mode is designed for no out-of sequence delivery and admits variable L2 MTU.
@@ -1247,7 +1187,7 @@ An all-0 fragment, is composed of the following fields\footnote{The RFC 8724 als
     \centering 
     \input{figs/all-0-NoAck}
     \caption{All-0 SCHC Fragment in No-Ack mode} 
-    \label{fig:all-0} 
+    \label{fig-all-0} 
 \end{figure} 
 
 The second type of fragment is the \texttt{All-1}, it corresponds to the last fragment. As shown in Figure \ref{fig:all-1}, contrary to the \texttt{All-0}, it also contains the RCS field, and it can also contains padding as needed in order to fit the L2 word size.
@@ -1256,7 +1196,7 @@ The second type of fragment is the \texttt{All-1}, it corresponds to the last fr
     \centering 
     \input{figs/all-1-NoAck}
     \caption{All-1 SCHC Fragment in No-Ack mode} 
-    \label{fig:all-1} 
+    \label{fig-all-1} 
 \end{figure} 
    
 In OpenSCHC the Reassembly Check Sequence (RCS) field corresponds to the result of using the CRC32 algorithm, and as recommended by the RFC 8724 it is computed on the full SCHC packet (after reassembly) concatenated with the padding bits.
@@ -1271,7 +1211,7 @@ In this case, the transmitter creates $n-1$ \texttt{All-0} fragments and one \te
     \centering 
     \input{figs/NoAck}
     \caption{All-1 SCHC Fragment in No-Ack mode} 
-    \label{fig:NoAck} 
+    \label{fig-NoAck} 
 \end{figure} 
 
 \subsection{The code}
@@ -1292,6 +1232,7 @@ For the uplink, they are in charge of:
 \item core program: reassembling and decompressing SCHC packets and, forwarding the Echo reply IPv6 Packet to the user.
 \end{itemize} 
 
+
 \subsubsection{Core program}
 
 For this example we will extend the code used in Section~\ref{sec:compr_code}. 
@@ -1308,130 +1249,5 @@ As in the C/D only example, the \texttt{processPkt} calls the SCHC Machine and t
 There can be two kinds off packets: (i) IPv6 tunneled packets filtered by looking at the IP proto 41 and passed to the SCHC Machine removing the first 34 bytes (Ethernet and IPv4 headers), and (ii) SCHC Packets filtered by looking at the UDP socket port \texttt{0x5C4C}.
 
 ~
-\input{code/ping_core2.py}
-~
+\pythonlst{ping_core2.py}
 
-The former is used to start the F/D process, IPv6 packets are passed to the SCHC Machine using the \texttt{schc\_send} function. 
-This function triggers the SCHC actions: (i)~compression, (ii) fragmentation and finally (iii) SCHC Fragment transmission using the scheduler.
-And the latter starts the R/D process. 
-In such case the \texttt{schc\_recv} triggers the SCHC Actions: (i) Reassembly and (ii) Decompression. This function returns $None$ when it is not the last fragment (All-0) or the decompressed packet when the last fragment arrives.
-
-\subsubsection{Device program}
-
-For the device side, as we can see in \vref{prog-ping-device2}, the code is almost the same, as in the C/D example the position is changed to \texttt{T\_POSITION\_DEVICE} when defining the Rule Manager, this will be used to select the correct rules and CDA.
-
-~
-
-Contrary to the previous example, where the device simply echoes the SCHC packet to the core. 
-Here, we use scapy to create the ICMPv6 Echo Reply packet.
-Then, this packet is injected into the SCHC Machine by using the \texttt{schc\_send} function.
-
-
-\input{code/ping_device2.py}
-
-\subsection{The execution}
-
-Start the device and core programs, is sudo mode:
-
-\begin{lstlisting}
-$ sudo python3.9 ping_core2.py 
-\end{lstlisting}
-
-\begin{lstlisting}
-$ sudo python3.9 ping_device2.py 
-\end{lstlisting}
-
-The program will display the rules and cursor spins, indicating the SCHC machine is running.
-As we can see, three rules are defined: Rule 6/3 for compression, Rule 12/11 for fragmentation in Uplink using No-Ack mode and Rule 13/11 using No-Ack mode.
-
-~
-
-\input{code/rules}
-
-Then, we start pinging the device defined in the SoR, the \texttt{-c 1} limits the number of ping messages, and \texttt{-s 50} increases the size of the ICMPv6 packet.
-
-\begin{lstlisting}
-$ ping6 -c 1 -s 50 dev2.openschc.net
-\end{lstlisting}
-
-And we get as result:
-
-\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
-58 bytes from 2001:470:1f21:1d2::2 (2001:470:1f21:1d2::2): icmp_seq=1 ttl=239 time=136 ms
-
---- dev2.openschc.net ping statistics ---
-1 packets transmitted, 1 received, 0% packet loss, time 0ms
-rtt min/avg/max/mdev = 135.661/135.661/135.661/0.000 ms
-
-\end{lstlisting}
-
-The core instance displays :
-
-\input{code/result_frag_a}
-
-We can see several steps. 
-The following are those corresponding to the C/F Process one the ICMPv6 message arrives to the core instance:
-
-~
-
-\begin{itemize}
-
-\item Parse the packet: from a sequence of bytes received on the network, create a list of fields containing the field identification and their associated value.
-\item Find a valid compression rule: ask the rule manager to find a rule matching the
-parsed packet. 
-The rule selection will also provide the device ID.
-\item The Rule Manager finds a Compression rule and the SCHC Machine applies the compression rule.
-\item The SCHC Machine verifies if the MTU is below the size of the compressed packet, and if not it looks for a fragmentation rule for this packet. 
-\item The Rule Manager finds the Rule 12 that correspond to fragmentation in No-Ack mode
-\item The SCHC Machine creates a context used to track the fragmentation session. It corresponds to the Rule ID, the Rule ID length and the dtag. In our example dtag is set to zero.
-\item The SCHC Machine starts to create fragments and sent it into the Network. 
-In this example, three All-0 fragments and 1 All-1 Fragment are created.
-\item Fragments are sent on the UDP tunnel using the corresponding device ID 
-\\
-\texttt{udp:54.37.158.10:8888}
-\end{itemize}
-
-~
-
-Then, once the device has performed the R/D process, created the the echo query response and C/F the prompt shows the following messages:
-
-~
-
-\begin{itemize}
-\item Scappy sniffs an udp packet and detects that it comes from the device by looking at the IP and corresponding port: \texttt{other\_end = udp:54.37.158.10:8888}.
-\item The SCHC Machine creates a reassembly session using the NoAck mode.
-\item The SCHC Machine stores all the fragments until the All-1 is received.
-\item The SCHC Machine reassembles the fragments and decompress it.
-\item Once decompressed, the received packet is printed using scapy; we can see that it correspond to the ICMP Echo Query Response created by the device.
-\item Finally, the core sends the IPv6 packet to the user  
-\end{itemize}
-
-~
-
-At the device side we get the following messages:
-
-~
-
-\input{code/result_frag_b}
-
-~
-
-We can tell that, the process follows the following steps:
-
-~
-
-\begin{itemize}
-    \item Reception of a SCHC Packet
-    \item The SCHC Machine detects that it corresponds to a SCHC Fragment and creates a reassembly session and stores the fragments as they arrive.
-    \item Once the All-1 arrives, the SCHC Machine reassembles the packet.
-    \item The SCHC Machine validates the CRC.
-    \item The Echo Reply is created.
-    \item As in the core side, the Rule Manager finds a compression rule, then, the packet is parsed, compressed and fragmented.
-    \item Three All-0 and one All-1 SCHC fragments are created and sent back to the core.
-\end{itemize}
-
-Finally, sudo tcpdump -nXi ens3 udp port 0x5C4C at the core side. 
-As we can see SCHC packets are first sent on the tcp tunnel and
-
-
-\section{Fragmentation in Ack-on-Error mode}
