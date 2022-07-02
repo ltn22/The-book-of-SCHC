@@ -1,0 +1,180 @@
+\chapter{Getting started}
+
+OpenSCHC offers an easy way to understand and experiment the compression/decompression mechanism as well as the fragmentation protocol. We start be illustrating compression and fragmentation process defined in \rfc{8724}. To simplify experiments, OpenSCHC does not require to run on a LPWAN network, experiments can run on a regular network using UDP tunnels.
+
+
+\section{Installation}\label{chap-plat}
+
+\subsection{Download code}
+
+To download openSCHC, just clone the openschc repository on github.
+
+
+\begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\small]
+> git clone git@github.com:openschc/openschc.git
+\end{termc}
+
+and use the scapy branch.
+
+\begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\small, escapechar=@]
+> git checkout scapy
+\end{termc}
+
+\subsection{Setting up the environment}
+
+For testing SCHC compression and fragmentation d-features, we need to generate some IPv6 packets, that will be caught by openSCHC and processed. 
+
+~
+
+An IPv6 prefix is needed for that traffic. A simple way to get a global IPv6 prefix is to use Hurricane Electric tunnel broker:
+\begin{itemize}
+\item Go to that website \url{https://tunnelbroker.net/}, 
+\item Create an account if needed or just log in, 
+\item Select \textit{Create another Tunnel},
+\item enter the IPv4 address of the machine running openSCHC and a location,
+\end{itemize}
+
+Once the tunnel created, you will find some configuration examples, that will help you to configure your machine.
+
+For \Index{Ubuntu} 20, it will be in the \texttt{/etc/\Index{netplan}} directory:
+
+\begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\tiny, escapechar=@]
+> cat /etc/netplan/50-cloud-init.yaml
+# This file is generated from information provided by
+# the datasource.  Changes to it will not persist across an instance.
+# To disable cloud-init's network configuration capabilities, write a file
+# /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg with the following:
+# network: {config: disabled}
+network:
+    ethernets:
+        ens3:
+            dhcp4: true
+            match:
+                macaddress: fa:16:3e:e9:db:5d
+            addresses:
+            - "2001:41d0:404:200:0:0:0:3a86/64"
+            gateway6: "2001:41d0:0404:0200:0000:0000:0000:0001"
+            set-name: ens3
+    version: 2
+    @\underline{tunnels:}@
+      @\underline{he-ipv6:}@
+       @\underline{mode: sit}@
+       @\underline{remote: 216.66.87.102}@
+       @\underline{local: 51.91.121.182}@
+       @\underline{addresses:}@
+         @\underline{- "2001:470:1f20:1d2::2/64"}@
+       @\underline{gateway6: "2001:470:1f20:1d2::1"}@
+\end{termc}
+
+\noindent 
+Type the following comment to validate your new network configuration:
+\begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\tiny, escapechar=@]
+>@\underline{sudo netplan try}
+Warning: Stopping systemd-networkd.service, but it can still be activated by:
+  systemd-networkd.socket
+Do you want to keep these settings?
+
+
+Press ENTER before the timeout to accept the new configuration
+
+
+Changes will revert in 111 seconds
+Configuration accepted.
+>@\underline{sudo netplan apply}
+\end{termc}
+and your machine interfaces looks the following:
+
+
+
+\begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\tiny, escapechar=@]
+> ifconfig
+ens3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 51.91.121.182  netmask 255.255.255.255  broadcast 0.0.0.0
+        inet6 2001:41d0:404:200::3a86  prefixlen 64  scopeid 0x0<global>
+        inet6 fe80::f816:3eff:fee9:db5d  prefixlen 64  scopeid 0x20<link>
+        ether fa:16:3e:e9:db:5d  txqueuelen 1000  (Ethernet)
+        RX packets 9543878  bytes 1758163442 (1.7 GB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 9253880  bytes 1479370777 (1.4 GB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+he-ipv6: flags=209<UP,POINTOPOINT,RUNNING,NOARP>  mtu 1480
+        inet6 fe80::335b:79b6  prefixlen 64  scopeid 0x20<link>
+        inet6 2001:470:1f20:1d2::2  prefixlen 64  scopeid 0x0<global>
+        sit  txqueuelen 1000  (IPv6-in-IPv4)
+        RX packets 782095  bytes 447475094 (447.4 MB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 71534  bytes 6022694 (6.0 MB)
+        TX errors 5  dropped 0 overruns 0  carrier 5  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 7212  bytes 657864 (657.8 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7212  bytes 657864 (657.8 KB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+\end{termc}
+
+Note that in this example, the machine is multi-homed; \texttt{ens3} interface is configured with the regular IPv6 address and \texttt{he-ipv6} with the Hurricane Electric IPv6 address. 
+
+\section{Network Topology}
+
+We have currently configured the network for the code part of SCHC. SCHC sends SCHC packet to another device which will also run SCHC. On that second machine, install the github repository, too.
+
+~
+
+With openSCHC the following topology (cf. figure~\vref{fig-topo}) will be used for the rest of the tutorial. SCHC packet will be tunneled over the Internet to reach the other SCHC instance. 
+
+ \begin{figure}[!ht] 
+\centering 
+
+
+	\begin{tikzpicture}[scale=0.8, transform shape]
+
+	\draw (0,0) node(SCHC)[rectangle, minimum size=2cm, draw, fill=palerod]{}; 
+	\draw(SCHC) node {\small{SCHC}};
+	\draw(SCHC.north) node [above]{\small{Core}};
+	
+	\draw(SCHC.south) -- ++(0, -1) coordinate(a);
+	\draw (a) -- ++(-2, 0);
+	\draw (a) -- ++(2, 0);
+	
+	\path (SCHC) -- ++(5, 3) coordinate (HE);
+	
+	\draw (HE) node [cloud, minimum width=3cm, minimum height= 2cm, draw, fill=pink!20] {};
+	\draw (HE) node  {\tiny{Application}};
+
+	\draw [double, dashed] (HE) to [bend left=45] node [above, sloped] {IPv6} node [below, sloped] {over IPv4 tunnel} (SCHC);
+	
+	\path (SCHC) -- ++(-7, 1) coordinate (dev);
+	\draw (dev) node(SCHC_dev)[rectangle, minimum size=2cm, draw, fill=grey!10]{}; 
+	\draw(dev) node {\small{SCHC}};
+	\draw (dev) node[cloud, minimum size=4cm, draw]{}; 
+	\draw (SCHC_dev.north) node [above] {\small{Device}};
+	
+	
+	\draw [very thick] (dev.south) to [bend right=80] node [below, sloped] {UDP}  node [above, sloped] {SCHC packet} (SCHC.south);
+	
+
+	\path (SCHC) -- ++(-7, -4) coordinate (dev);
+	\draw (dev) node(SCHC_dev)[rectangle, minimum size=2cm, draw, dotted ]{}; 
+	\draw(dev) node {\small{SCHC}};
+	\draw (dev) node[cloud, minimum size=4cm, draw, dotted]{}; 
+	\draw (SCHC_dev.north) node [above] {\small{Device}};
+	
+	
+	\draw [very thick, dotted] (dev.south) to [bend right=80]  (SCHC.south);
+	
+
+	\end{tikzpicture}
+\caption{Network Topology} 
+\label{fig-topo} 
+\end{figure} 
+
+In this architecture we see that we will need at least 2 SCHC instances. One located in the core that will act as a router between the IPv6 network and the constrained network, illustrated in our example by an UDP tunnel, but is could also be the LPWAN network. 
+
+The others instances of SCHC will be located in the devices. We will define upstream traffic as the communication between the device and the core, and without any surprise, the other direction will be called downlink. Messages exchanged between these entities are called SCHC packets. 
+
+One or several applications will communicate with the devices.
