@@ -26,7 +26,7 @@ For testing SCHC compression and fragmentation d-features, we need to generate s
 
 ~
 
-An IPv6 prefix is needed for that traffic. A simple way to get a global IPv6 prefix is to use Hurricane Electric tunnel broker:
+An IPv6 prefix is needed for that traffic. A simple way to get a global IPv6 prefix is to use \Index{Hurricane Electric} tunnel broker:
 \begin{itemize}
 \item Go to that website \url{https://tunnelbroker.net/}, 
 \item Create an account if needed or just log in, 
@@ -36,7 +36,7 @@ An IPv6 prefix is needed for that traffic. A simple way to get a global IPv6 pre
 
 Once the tunnel created, you will find some configuration examples, that will help you to configure your machine.
 
-For \Index{Ubuntu} 20, it will be in the \texttt{/etc/\Index{netplan}} directory:
+For Ubuntu 20, it will be in the \texttt{/etc/\Index{netplan}} directory:
 
 \begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\tiny, escapechar=@]
 > cat /etc/netplan/50-cloud-init.yaml
@@ -69,7 +69,7 @@ network:
 \noindent 
 Type the following comment to validate your new network configuration:
 \begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\tiny, escapechar=@]
->@\underline{sudo netplan try}
+>sudo netplan try
 Warning: Stopping systemd-networkd.service, but it can still be activated by:
   systemd-networkd.socket
 Do you want to keep these settings?
@@ -80,7 +80,7 @@ Press ENTER before the timeout to accept the new configuration
 
 Changes will revert in 111 seconds
 Configuration accepted.
->@\underline{sudo netplan apply}
+>sudo netplan apply
 \end{termc}
 and your machine interfaces looks the following:
 
@@ -174,7 +174,15 @@ With openSCHC the following topology (cf. figure~\vref{fig-topo}) will be used f
 \end{figure} 
 
 In this architecture we see that we will need at least 2 SCHC instances. One located in the core that will act as a router between the IPv6 network and the constrained network, illustrated in our example by an UDP tunnel, but is could also be the LPWAN network. 
+~~
 
-The others instances of SCHC will be located in the devices. We will define upstream traffic as the communication between the device and the core, and without any surprise, the other direction will be called downlink. Messages exchanged between these entities are called SCHC packets. 
+The others instances of SCHC will be located in the devices. We will define \Index{upstream} traffic as the communication between the device and the core, and without any surprise, the other direction will be called \Index{downstream}. 
 
-One or several applications will communicate with the devices.
+~~
+
+
+Messages exchanged between these entities are called \Index{SCHC packet}s. 
+
+~~
+
+One or several \Index{application}s will communicate with the devices.

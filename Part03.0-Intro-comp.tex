@@ -3,7 +3,7 @@
 
 \section{Introduction}
 
-In this chapter, we are going to setup the compression of a ping6 request. An ICMPv6 request is composed of an IPv6 header, followed by a ICMPv6 request message.
+In this chapter, we are going to setup the compression of a ping6 request. An ICMPv6 request is composed of an IPv6 header, followed by a \Index{ICMPv6 request} message.
 
 \begin{termc}[backgroundcolor=\color{gray!10}, basicstyle=\ttfamily\tiny, escapechar=@]
 Internet Protocol Version 6, Src: 2a01:cb08:903a:bd00:a8c4:5c6d:c2b5:84be, Dst: 
@@ -75,53 +75,54 @@ The following compression rule can be applied to that traffic.
 
 \section{Understanding compression rules}
 
-A rule contains a list of fields description, starting with a Field ID. openSCHC uses a string structured with the protocol name (\texttt{IPV6} and \texttt{ICMPV6} in the rule above). Field ID uses keyword \texttt{FID}.
-
-A Target Value (\texttt{TV}) may be present and contains the value the rule expected to find in the field.
-
-A direction can be associated to a field. In the above example, \texttt{ICMPV6.TYPE} is repeated twice for uplink and downlink. When the direction is not specified, openSCHC considers the field as bi-directionnal.
-
-A Matching Operator specifies the comparison between the target Value  (\texttt{TV}) and the Field Value {\texttt{FV}) present in the packet to be compressed. RFC 8724 defines 4 MO:
-
+A rule contains a list of fields description:
 \begin{itemize}
-\item \texttt{ignore}: the FV is ignored therefore, the result of the field comparison is always true.
-\item \texttt{equal}: the result of the comparison is true is the value contained in the \texttt{TV} is equal to the value contained if the \texttt{FV}. OpenSCHC allows integer and strings for the comparison.
-\item \texttt{MSB}: is true only if the first bits of the \texttt{TV} are equal to the first bits of the \texttt{FV}. The comparion length in bits is specified in the rule with the keywork \texttt{MO.val}. For string comaprison, oepnSCHC impose a  multiple of 8 bits for the length.
-\item \texttt{match-mapping}: The \texttt{TV} contains an array of values. The comparison is true, if the \texttt{FV} appears somewhere in the list.
-\end{itemize}
+    \item starting with a \Index{Field ID}. openSCHC uses a string structured with the protocol name (\texttt{IPV6} and \texttt{ICMPV6} in the rule above). Field ID uses keyword \texttt{\Index{FID}}.
 
-~
+    \item A \Index{Target Value} (\texttt{TV}) may be present and contains the value the rule expected to find in the field.
 
-A rule is selected if all the comparison are true and the packet contains no other fields. 
+    \item A \Index{Direction Indicator} (\texttt{DI}) can be associated to a field. In the above example, \Indexr{\texttt{ICMPV6.TYPE}} is repeated twice for uplink and downlink. When the direction is not specified, openSCHC considers the field as bi-directionnal.
 
-~
+    \item A \Index{Matching Operator} (\texttt{MO}) specifies the comparison between the target Value  (\texttt{TV}) and the Field Value (\texttt{FV}) present in the packet to be compressed. \rfc{8724} defines 4 MO:
 
-When a rule is selected, the Compression Actions (CDA} are applied to the packet fields. RFC 8724 defines several CDAs, among them:
+    \begin{itemize}
+    \item \texttt{\Index{ignore}}: the FV is ignored therefore, the result of the field comparison is always true.
+    \item \texttt{\Index{equal}}: the result of the comparison is true is the value contained in the \texttt{TV} is equal to the value contained if the \texttt{FV}. OpenSCHC allows integer and strings for the comparison.
+    \item \texttt{\Index{MSB}}: is true only if the first bits of the \texttt{TV} are equal to the first bits of the \texttt{FV}. The comparion length in bits is specified in the rule with the keywork \texttt{MO.val}. For string comaprison, oepnSCHC impose a  multiple of 8 bits for the length.
+    \item \texttt{\Index{match-mapping}}: The \texttt{TV} contains an array of values. The comparison is true, if the \texttt{FV} appears somewhere in the list.
+    \end{itemize}
 
-\begin{itemize}
-\item \texttt{not-sent}: the \texttt{FV} is not sent, the decompressor will use the value stored in the rule to recover the value.
-\item \texttt{value-sent}: the value is explicitely sent as a residue. The decompressor will use the residue to recover the value.
-\item \texttt{LSB}: the least significant bits are sent as residue. The decompressor will combine the \texttt{TV} and the residue to recover the field. LSB can only be used with a MSB MO. No argument are needed for LSB. The LSB size is defined from the field size and the MSB size.
-\item \texttt{mapping-sent} : the index in the array is sent as residue. The decompressor will use the idenx to recover the value. This CDA can only be used with a match-mapping MO.
-\item \texttt{compute-*}: the \texttt{FV} is not sent, the decompressor will use a specific algorithm to recover the value, such as compute the length or compute a checksum.
+    A rule is selected if all the comparison are true and the packet contains no other fields. 
+
+
+    \item When a rule is selected, the \Index{Compression Decompression Actions} (\texttt{CDA}) are applied to the packet fields. \rfc{8724} defines several CDAs, among them:
+
+    \begin{itemize}
+        \item \Indexs{\texttt{not-sent}}: the \texttt{FV} is not sent, the decompressor will use the value stored in the rule to recover the value\marge{not-sent}.
+        \item \Index{\texttt{value-sent}}: the value is explicitely sent as a residue. The decompressor will use the residue to recover the value.
+        \item \Index{\texttt{LSB}}: the least significant bits are sent as residue. The decompressor will combine the \texttt{TV} and the residue to recover the field. LSB can only be used with a MSB MO. No argument are needed for LSB. The LSB size is defined from the field size and the MSB size.
+        \item \Index{\texttt{mapping-sent}} : the index in the array is sent as residue. The decompressor will use the idenx to recover the value. This CDA can only be used with a match-mapping MO.
+        \item \Index{\texttt{compute-*}}: the \texttt{FV} is not sent, the decompressor will use a specific algorithm to recover the value, such as compute the length or compute a checksum.
+    \end{itemize}
+
 \end{itemize}
 
 \section{Compressing an ICMPv6 echo request packet}
 
-In the above example, the \texttt{IPV6.VERSION} field is not sent, the value 6 is stored is the rule. 
-The \texttt{IPV6.NXT} follows the same behavior, since ICMPv6 is expected, the \texttt{TV} is 58.
+In the above example, the \Indexr{\texttt{IPV6.VERSION}} field is not sent, the value 6 is stored is the rule. 
+The \Indexr{\texttt{IPV6.NXT}} follows the same behavior, since ICMPv6 is expected, the \texttt{TV} is 58.
 
 ~
 
-Note that \texttt{IPV6.FL} and \texttt{IPV6.HOP\_LMT} use the ignore/not-sent combination. During the rule selection, the \texttt{FL} is not taken into account, but during decompression the value stored in the rule is used. The reason is that IPv6 Flow Label (\texttt{IPV6.FL}) can be different from 0, in the capture the value is \texttt{0x80800}. 
+Note that \Indexr{\texttt{IPV6.FL}} and \Indexr{\texttt{IPV6.HOP\_LMT}}[0.45cm] use the \Indexs{ignore}/\Indexs{not-sent}\marge{ignore/not-sent} combination. During the rule selection, the \texttt{FL} is not taken into account, but during decompression the value stored in the rule is used. The reason is that IPv6 Flow Label (\texttt{IPV6.FL}) can be different from 0, in the capture the value is \texttt{0x80800}. 
 
 ~
 
-For IPv6 Hop Limit  (\texttt{IPV6.HOP\_LMT}) the value cannot be forecasted, depends of how many routers are crossed and may vary during from one packet to the other. The rule ignores the value and generate a hop limit of 64. To be valid, this implies that the device will not forward anymore the packet. If the device acts as a router the Hop Limit field must be sent.
+For IPv6 Hop Limit  (\Indexr{\texttt{IPV6.HOP\_LMT}}) the value cannot be forecast, depends of how many routers are crossed and may vary during from one packet to the other. The rule ignores the value and generate a hop limit of 64. To be valid, this implies that the device will not forward anymore the packet. If the device acts as a router the Hop Limit field must be sent.
 
 ~
 
-The address fields compression is more interesting, there is not source or destination address in the SCHC rule. SCHC defines the device  and the application addresses\footnote{This will apply also for UDP port number}. The rule becomes independant of the direction. OpenSCHC splits the addresses into a 64 bit long prefix and a 64 bit long IID. 
+The address fields compression is more interesting, there is not source or destination address in the SCHC rule. SCHC defines the device  and the application \Index{addresses}\footnote{This will apply also for UDP port number}. The rule becomes independent of the direction. OpenSCHC splits the addresses into a 64 bit long prefix and a 64 bit long \Index{IID}. 
 
 In our scenario the device address is not sent, since the value is known by the device. On the opposite, we allow any host to ping the device\footnote{This behavior has to be prohibited in a LPWAN network, for security reasons, since in this scenario we are using an UDP tunnel, there is no security issue.}. The destination address is fully sent to the device.
 
@@ -131,11 +132,11 @@ At the ICMPv6 level, the type field is elided regarding the direction. The Echo 
 
 ~~~
 
-The identifier (\texttt{ICMPv6.IDENT}) and sequence number (\texttt{ICMPV6.SEQNO}) are not compressed and send as residue.
+The identifier (\Indexr{\texttt{ICMPv6.IDENT}}) and sequence number (\Indexr{\texttt{ICMPV6.SEQNO}}[0.45cm]) are not compressed and send as residue.
 
 ~~
 
-The other fields \texttt{IPV6.LENGTH} and \texttt{ICMPV6.CHECKSUM} are not sent and computed by the other side.
+The other fields \Indexr{\texttt{IPV6.LENGTH}} and \Indexr{\texttt{ICMPV6.CHECKSUM}}[0.45cm] are not sent and computed by the other side.
 
 ~~
 
@@ -148,7 +149,7 @@ The SCHC packet has the following format:
 \label{fig-residue} 
 \end{figure} 
 
-The rule ID takes 3 bits, followed by the compression residues, the ICMPv6 payload and some padding bits. Since the Rule ID length is 3 bit long and the rest is byte aligned, 5 bits are needed to align the SCHC packet on a  L2-word (i.e. 1 byte).
+The rule ID takes 3 bits, followed by the compression \Index{residue}s, the ICMPv6 payload and some padding bits. Since the Rule ID length is 3 bit long and the rest is byte aligned, 5 bits are needed to align the SCHC packet on a  L2-word (i.e. 1 byte).
 
 \section {Compression process}
 
@@ -186,7 +187,7 @@ In OpenSCHC, SCHC Compresssion/Decompression (CD) and Frgamentation/Reassembly (
 \end{figure} 
 
 Figure~\vref{fig-schc-archi} gives the architecture of the ping gateway. 
-Scapy \textit{sniff} function gets traffic on the network. 
+\Index{Scapy} \textit{sniff} function gets traffic on the network. 
 This traffic is composed of IPv6 packets that could be compressed and tunneled SCHC packets that are decompressed. 
 
 
@@ -201,7 +202,7 @@ The scapy module calls the SCHC Machine, in charge of CD-FR processes. Layer 2 a
 \pythonlst{ping_core1.py}
 
 
-This program~\vref{prog-ping-core1} shows how to compress ICMPv6 packets and send them on a UDP tunnel to a device. It starts with the modules importation from scapy, openSCHC and some regular python modules. Note the importation of the \texttt{scapy\_connection} module, located on the working directory. This module implements the scheduler and the methods to send packets.
+This program~\pprog{ping-core1.py} shows how to compress ICMPv6 packets and send them on a UDP tunnel to a device. It starts with the modules importation from scapy, openSCHC and some regular python modules. Note the importation of the \texttt{scapy\_connection} module, located on the working directory. This module implements the scheduler and the methods to send packets.
 
 \begin{lstlisting}[caption={rule icmp1.json}, backgroundcolor=\color{yellow}, label=rule-icmp1, basicstyle=\ttfamily\tiny],
 {

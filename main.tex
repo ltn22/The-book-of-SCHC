@@ -101,13 +101,12 @@ showstringspaces=false
 
 % RFC
 \newcommand\rfc[1]{\href{http://www.ietf.org/rfc/rfc#1.txt}{\textcolor{blue}{RFC #1}\index{RFC #1}}}
-\newcommand\pfunction[2]{\texttt{#2}\index{Module Python!#1!#2}}
+\newcommand\pfunction[2]{\texttt{#2}\index{Module Python!#1!#2}\reversemarginpar\marginnote{\textcolor{green!50!black}{#2}}\normalmarginpar\marginnote{\textcolor{green!50!black}{#1}}}
 
 % boot.py
 
 \newcommand\glos[1]{\gls{#1}\index{#1}}
-\newcommand\pprog[2]{\href{https://github.com/ltn22/PLIDObis/blob/master/#2/#1}{\texttt{#1}}\index{Programmes Python!#1}}
-\newcommand\lprog[2]{\href{https://github.com/ltn22/PLIDObis/blob/master/#2/#1}{\texttt{#1}}\index{Programmes micro-python!#1}}
+\newcommand\pprog[1]{\href{https://github.com/ltn22/The-book-of-SCHC/blob/main/Programs/#1}{\texttt{#1}}\index{Programmes!#1}}
 
 % QUESTION
 
@@ -171,10 +170,18 @@ showstringspaces=false
 \let\oldac\ac
 \renewcommand*{\ac}[1]{\oldac{#1}\index{#1}}
 
-%\usepackage{marginnote}
+\usepackage{marginnote}
+\setlength{\marginparwidth}{3cm}
+\usepackage[a4paper,...,marginparwidth=3cm,...]{geometry}
+\let\oldmarginpar\marginpar
+\renewcommand\marginpar[1]{\-\oldmarginpar[\raggedleft\footnotesize #1]%
+{\raggedright\footnotesize #1}}
 
 %\setmarginnotefont{\small\itshape\color{blue}}
-\newcommand\Index[1]{\textbf{#1}\index{#1} } %\marginnote{#1} }
+\newcommand\Index[1]{#1\index{#1}\reversemarginpar\marginnote{\textcolor{blue}{\textrm{#1}}}\normalmarginpar}
+\newcommand\Indexr[1]{#1\index{#1}\marginnote{\textcolor{blue}{\textrm{#1}}}}
+\newcommand\Indexs[1]{#1\index{#1}}
+\newcommand\marge[1]{\reversemarginpar\marginnote{\textcolor{blue}{\textrm{#1}}}\normalmarginpar}
 
 % Bibliography
 \usepackage[style=alphabetic,sorting=nyt,sortcites=true,autopunct=true,babel=hyphen,hyperref=true,abbreviate=false,backref=true,backend=biber]{biblatex}
@@ -191,7 +198,7 @@ showstringspaces=false
   commentstyle=\itshape\color{purple!40!black},
   identifierstyle=\color{blue},
   stringstyle=\color{orange}, caption=#2,
-  numbers=left, numberstyle=\tiny, stepnumber=2, numbersep=5pt, frame=single, #1] {Programs/#2}\index{Programmes Python!#2}
+  numbers=left, numberstyle=\tiny, stepnumber=2, numbersep=5pt, frame=single, #1] {Programs/#2}\index{Programmes Python!#2},
   }
 
 \newcommand\pythonnxt[2][]{
