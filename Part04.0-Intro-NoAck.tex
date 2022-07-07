@@ -1,6 +1,3 @@
-
-
-
 \chapter{Fragmenting Ping6}
 
 In this chapter, in addition to compressing a ping6 request we will fragment it.
@@ -85,7 +82,7 @@ The following fragmentation rules are then added to the SoR and can be applied t
 
 \section{Understanding fragmentation rules}
 
-In addition to the rule ID, the rule ID length a fragmentation rule contains two  parameters: the mode and the direction.
+In addition to the rule ID and the rule ID length a fragmentation rule contains two parameters: the mode and the direction.
 
 ~
 
@@ -102,7 +99,7 @@ On the contrary, rule \texttt{13/11} is used for fragmenting the traffic going f
 ~
 
 As stated in RFC 8724, in OpenSCHC, SCHC Fragmentation is always done after compression\footnote{It shall rather be noted that, the no-compression rule is also permitted. Therefore, if one is willing to use only SCHC Fragmentation, two rules should be defined: (i) no-compression rule and (ii) the desired fragmentation rule.}. 
-Then, as shown in Figure~\ref{fig:icmpv6_query} the whole process goes as following:
+Then, as shown in Figure~\ref{fig-icmpv6_query} the whole process goes as following:
 
 \begin{figure}[!tbp]
   \begin{minipage}[b]{0.33\columnwidth}
@@ -114,7 +111,7 @@ Then, as shown in Figure~\ref{fig:icmpv6_query} the whole process goes as follow
   \centering
     \input{figs/device_rx}
   \end{minipage}
-\caption{ICMPv6 Query Reception when MTU exceeds L2 MTU: (a) Receiver behaviour, (b) Transmitter behaviour.}    \label{fig-icmpv6_query}
+\caption{ICMPv6 Query Reception when MTU exceeds L2 MTU: (a) Receiver behaviour, (b) Transmitter behaviour.} \label{fig-icmpv6_query}
 \end{figure}
 
 \begin{itemize}
@@ -168,7 +165,7 @@ Therefore, there is no need for bidirectional links.
 
 \subsection{SCHC Fragments Format}
 
-In No-ACK, there are two kinds of SCHC Fragments: (i) \texttt{All-0} fragments presented in Figure.\ref{fig:all-0}, and the last fragment called \texttt{All-1} depicted in Figure.\ref{fig:all-1}
+In No-ACK, there are two kinds of SCHC Fragments: (i) \texttt{All-0} fragments presented in Figure.\ref{fig-all-0}, and the last fragment called \texttt{All-1} depicted in Figure.\ref{fig-all-1}
 An all-0 fragment, is composed of the following fields\footnote{The RFC 8724 also defines the \texttt{DTag} (Datagram Tag) and the \texttt{W} (Window) fields. The former is used for differentiating SCHC F/R messages belonging to different SCHC Packets, for our example this field is not present, and the latter, representing the Window size used in Ack-on-Error and Ack-Allways modes}:
 
 ~
@@ -203,7 +200,7 @@ In OpenSCHC the Reassembly Check Sequence (RCS) field corresponds to the result 
 \subsection{Fragmentation/Reassembly Process}
 
 In this mode, since there are no fragment acknowledgments, the sender creates as many fragments as needed based on the size of the compressed SCHC packet and the L2 MTU.
-Figure \ref{fig:NoAck} presents an example where $n$ fragments are needed. 
+Figure \ref{fig-NoAck} presents an example where $n$ fragments are needed. 
 In this case, the transmitter creates $n-1$ \texttt{All-0} fragments and one \texttt{All-1} with the corresponding RCS field and padding if needed.
 
 \begin{figure}[!ht] 
@@ -215,7 +212,7 @@ In this case, the transmitter creates $n-1$ \texttt{All-0} fragments and one \te
 
 \subsection{The code}
 
-In this section, we will present the code necessary to process an icmpv6 echo request that exceeds the L2 MTU size. 
+In this section, we will present the code necessary to process an ICMPv6 echo request that exceeds the L2 MTU size. 
 Two blocks of code are required: core and device programs. 
 For the downlink, they are in charge of: 
 
@@ -234,8 +231,8 @@ For the uplink, they are in charge of:
 
 \subsubsection{Core program}
 
-For this example we will extend the code used in Section~\ref{sec:compr_code}. 
-As in the previous case the Compression and Fragmentation process starts with the creation of a Rule Manager \texttt{rm} used to add the rules from the file \texttt{icmp2.json} (cf. \vref{rule-icmp2}), which includes the Rule 3 for compressing and Rules 12 and 13 for fragmenting.
+For this example we will extend the code used in Section~\ref{sec-compr_code}. 
+As in the previous case the Compression and Fragmentation process starts with the creation of a Rule Manager <<\texttt{rm}>> used to add the rules from the file \texttt{icmp2.json} (cf. \vref{rule-icmp2}), which includes the Rule 3 for compressing and Rules 12 and 13 for fragmenting.
 
 ~
 

@@ -101,12 +101,12 @@ showstringspaces=false
 
 % RFC
 \newcommand\rfc[1]{\href{http://www.ietf.org/rfc/rfc#1.txt}{\textcolor{blue}{RFC #1}\index{RFC #1}}}
-\newcommand\pfunction[2]{\texttt{#2}\index{Module Python!#1!#2}\reversemarginpar\marginnote{\textcolor{green!50!black}{#2}}\normalmarginpar\marginnote{\textcolor{green!50!black}{#1}}}
+\newcommand\pfunction[2]{\texttt{#2}\index{Module Python!#1!#2}\reversemarginpar\marginnote{\scriptsize\textcolor{green!50!black}{#2}}\normalmarginpar\marginnote{\scriptsize\textcolor{green!50!black}{#1}}}
 
 % boot.py
 
 \newcommand\glos[1]{\gls{#1}\index{#1}}
-\newcommand\pprog[1]{\href{https://github.com/ltn22/The-book-of-SCHC/blob/main/Programs/#1}{\texttt{#1}}\index{Programmes!#1}}
+\newcommand\pprog[1]{\href{https://github.com/ltn22/The-book-of-SCHC/blob/main/Programs/#1}{\texttt{#1}}\index{Programmes!#1}\marginpar{\scriptsize\textcolor{palerod!50!black}{#1}}}
 
 % QUESTION
 
@@ -136,8 +136,9 @@ showstringspaces=false
 }
 
 % MATHS PACKAGE
-\usepackage{amsmath,tikz}
+\usepackage{amsmath,tikz,tkz-euclide}
 \usetikzlibrary{matrix}
+
 \newcommand*{\horzbar}{\rule[0.05ex]{2.5ex}{0.5pt}}
 \usepackage{calc}
 
@@ -145,7 +146,7 @@ showstringspaces=false
 \usepackage{verbatim}
 
 \usepackage{tikz}
-
+\usetikzlibrary{scopes}
 \usetikzlibrary{automata}
 \usetikzlibrary[shadows]
 \usetikzlibrary{shapes}
@@ -178,10 +179,10 @@ showstringspaces=false
 {\raggedright\footnotesize #1}}
 
 %\setmarginnotefont{\small\itshape\color{blue}}
-\newcommand\Index[1]{#1\index{#1}\reversemarginpar\marginnote{\textcolor{blue}{\textrm{#1}}}\normalmarginpar}
-\newcommand\Indexr[1]{#1\index{#1}\marginnote{\textcolor{blue}{\textrm{#1}}}}
+\newcommand\Index[1]{#1\index{#1}\reversemarginpar\marginnote{\textcolor{blue}{\scriptsize{#1}}}\normalmarginpar}
+\newcommand\Indexr[1]{#1\index{#1}\marginnote{\textcolor{blue}{\scriptsize{#1}}}}
 \newcommand\Indexs[1]{#1\index{#1}}
-\newcommand\marge[1]{\reversemarginpar\marginnote{\textcolor{blue}{\textrm{#1}}}\normalmarginpar}
+\newcommand\marge[1]{\reversemarginpar\marginnote{\textcolor{blue}{\scriptsize{#1}}}\normalmarginpar}
 
 % Bibliography
 \usepackage[style=alphabetic,sorting=nyt,sortcites=true,autopunct=true,babel=hyphen,hyperref=true,abbreviate=false,backref=true,backend=biber]{biblatex}
@@ -191,14 +192,13 @@ showstringspaces=false
 \input{structure} % Insert the commands.tex file which contains the majority of the structure behind the template
 
 
-
 \newcommand\pythonlst[2][]{
 \lstinputlisting[language=Python, backgroundcolor=\color{palerod},   basicstyle=\footnotesize\ttfamily,
   keywordstyle=\bfseries\color{green!40!black},
   commentstyle=\itshape\color{purple!40!black},
   identifierstyle=\color{blue},
-  stringstyle=\color{orange}, caption=#2,
-  numbers=left, numberstyle=\tiny, stepnumber=2, numbersep=5pt, frame=single, #1] {Programs/#2}\index{Programmes Python!#2},
+  stringstyle=\color{orange}, caption=\detokenize{#2},
+  numbers=left, numberstyle=\tiny, stepnumber=2, numbersep=5pt, frame=single, #1, label=prog-\detokenize{#2}] {Programs/#2}\index{Programmes Python!#2}%
   }
 
 \newcommand\pythonnxt[2][]{
@@ -216,7 +216,7 @@ showstringspaces=false
   keywordstyle=\bfseries\color{green!40!black},
   commentstyle=\itshape\color{purple!40!black},
   identifierstyle=\color{blue},
-  stringstyle=\color{orange}, caption=#2,
+  stringstyle=\color{orange}, caption=\detokenize{#2},
   numbers=left, numberstyle=\tiny, stepnumber=2, numbersep=5pt, frame=single, #1] {Programs/#2}\index{Programmes micro-python!#2}
   }
 
@@ -346,7 +346,7 @@ showstringspaces=false
 
 \Input{Part01.0-Intro.tex}
 \Input{Part02.0-Rules.tex}
-\Input{Part03.0-Intro-comp.tex}
+\input{Part03.0-Intro-comp.tex}
 \Input{Part04.0-Intro-NoAck.tex}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

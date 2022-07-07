@@ -17,6 +17,7 @@
 \usetikzlibrary{circuits.logic.US}
 \usetikzlibrary{calc,intersections}
 
+
 \tikzset{input/.style=coordinate}
 \tikzset{output/.style=coordinate}
 \tikzset{
@@ -34,10 +35,12 @@
     yscale=0.8,
     transform shape,
     >=latex,              % Nice arrows; your taste may be different
-    start chain=going below,    % General flow is top-to-bottom
+    %start chain=1 going right,    % General flow is top-to-bottom
     node distance=6mm and 60mm, % Global setup of box spacing
     every join/.style={norm},   % Default linetype for connecting boxes
     ]
+
+
 
 \node (input) [input] {\textit{start}};
 

@@ -88,7 +88,7 @@ A rule contains a list of fields description:
     \begin{itemize}
     \item \texttt{\Index{ignore}}: the FV is ignored therefore, the result of the field comparison is always true.
     \item \texttt{\Index{equal}}: the result of the comparison is true is the value contained in the \texttt{TV} is equal to the value contained if the \texttt{FV}. OpenSCHC allows integer and strings for the comparison.
-    \item \texttt{\Index{MSB}}: is true only if the first bits of the \texttt{TV} are equal to the first bits of the \texttt{FV}. The comparion length in bits is specified in the rule with the keywork \texttt{MO.val}. For string comaprison, oepnSCHC impose a  multiple of 8 bits for the length.
+    \item \texttt{\Index{MSB}}: is true only if the first bits of the \texttt{TV} are equal to the first bits of the \texttt{FV}. The comparison length in bits is specified in the rule with the keywork \texttt{MO.val}. For string comparison, openSCHC impose a  multiple of 8 bits for the length.
     \item \texttt{\Index{match-mapping}}: The \texttt{TV} contains an array of values. The comparison is true, if the \texttt{FV} appears somewhere in the list.
     \end{itemize}
 
@@ -193,16 +193,22 @@ This traffic is composed of IPv6 packets that could be compressed and tunneled S
 
 
 \subsection{The code}
-\label{sec-compr-code}
+\label{sec-compr_code}
+
 
 The scapy module calls the SCHC Machine, in charge of CD-FR processes. Layer 2 allows to send decompressed packet or a SCHC packet on the network. 
 
+\subsubsection{Main program}
+
+\pythonlst[firstline=1,lastline=15, firstnumber=1]{ping_core1.py}
 
 
-\pythonlst{ping_core1.py}
+This program~\pprog{ping\_core1.py} shows how to compress ICMPv6 packets and send them on a UDP tunnel to a device. It starts with the modules importation from scapy, openSCHC and some regular python modules. Note the importation of the \Index{\texttt{scapy\_connection}} module, located on the working directory. This module implements the scheduler and the methods to send packets.
 
+\pythonnxt[firstline=18,lastline=22, firstnumber=18]{ping_core1.py}
 
-This program~\pprog{ping-core1.py} shows how to compress ICMPv6 packets and send them on a UDP tunnel to a device. It starts with the modules importation from scapy, openSCHC and some regular python modules. Note the importation of the \texttt{scapy\_connection} module, located on the working directory. This module implements the scheduler and the methods to send packets.
+The compression process starts with the creation of a Rule Manager \texttt{rm} to include the rules from file \texttt{icmp.json} (cf. Listing~\vref{rule-icmp1}), which contains  the compression rules we saw below and a NoAck fragmentation rule.
+
 
 \begin{lstlisting}[caption={rule icmp1.json}, backgroundcolor=\color{yellow}, label=rule-icmp1, basicstyle=\ttfamily\tiny],
 {
@@ -243,59 +249,90 @@ This program~\pprog{ping-core1.py} shows how to compress ICMPv6 packets and send
   }
 \end{lstlisting}
 
+This rule must be adapted to your environment. The \texttt{DeviceID} must reflect the IPv4 public address of your device and the Target Value of \Indexr{\texttt{IPV6.DEV\_PREFIX}} must be set to a IPv6 prefix of your domain, such as the ones allocated by Hurricane Electric.
+
+\pythonnxt[firstline=48,lastline=57, firstnumber=48]{ping_core1.py}
+
+The position of the SCHC instance has to be specified. In our example, we define our role as a core. Then, we create the UDP tunnel to receive SCHC packets from devices. The default port number is \texttt{0x5C4C}.
+
+A \texttt{lower\_layer} is created to be used by the SCHC machine when SCHC packet will have to be sent, and a \texttt{system} is created to manage events. The latter includes a \Index{scheduler}.  Both are defined in the \Index{\texttt{scapy\_connection}} module. 
+
+
+From that \texttt{system} a reference to the \texttt{scheduler} is extracted to be used in the \texttt{processPkt} function as a global variable.
+
+\pythonnxt[firstline=58,lastline=63, firstnumber=58]{ping_core1.py}
+
+The previously created classes are regrouped arounf a \Index{SCHC machine} which will process packets for compression and fragmentation. A \texttt{schc\_machine} instance is created and the previously created rule manager is associated to it.
+
+\pythonnxt[firstline=65,lastline=65, firstnumber=65]{ping_core1.py}
+
+
+Finally, the scapy \texttt{sniff} function is called. This last line never returns. The \texttt{processPkt} function is called each time a packet is received on interface \texttt{ens3}\footnote{Scapy allowed to listen simultaneously to several interfaced, for example \texttt{["ens3", "he-ipv6"]}, but since this feature returns sometime some errors, we prefer to listen only to interface \texttt{"ens3"} which will carried tunneled IPv6 packets from Hurricane Electrics.}.
+
+\subsubsection{Frame processing}
+
+\pythonnxt[firstline=24,lastline=29, firstnumber=24]{ping_core1.py}
+
+The \texttt{processPkt} function starts by calling the SCHC machine through the \pfunction{scapy\_scheduler}{run} method. This function must be called regularly, which is the case when some traffic occurs in the network, so it is important not to filter too much incoming traffic.
+
+~
+
+The functions looks for two types of packets:
+\begin{itemize}
+    \item SCHC tunneled packets coming from devices to the UDP port we defined (\texttt{0x5C4C} in our case),
+    \item IPv6 tunneled packets from Hurricane Electric easily recognisable through the use of IP proto 41.
+\end{itemize}
+
+\pythonnxt[firstline=31,lastline=44, firstnumber=31]{ping_core1.py}
+
+First, a test done to ensure that the frame has an Ethernet encapsulation\footnote{That wouldbe the case, if the Hurrican Electric interface was directly listened by scapy.}. Then we filter the frames to keep only those with:
+\begin{itemize}
+    \item an Ethertype equal to 0x800 indicating an IPv4 packet,
+    \item an IPv4 protocol number equal to 17 indicating an UDP message,
+    \item and a destination port of \texttt{0x5C4C} indicating a SCHC packet.
+\end{itemize}
+
+If all these conditions are met, we are sure that the socket has received a packet. We read the socket and get the message (\texttt{schc\_pkt}) and the device address (\texttt{addr}) which send the SCHC packet. 
+
+~
+
+The next step is to build the \Index{DeviceID} (\texttt{other\_end}) by concatenating the \texttt{udp} keyword, followed with the sender IPv4 address and its port number. The DeviceID must match the one stored in the rule (cf. Listing~\vref{rule-icmp1}).
+
 ~~
 
-The compression process starts with the creation of a Rule Manager \texttt{rm} to include the rules from file \texttt{icmp.json} (cf.~\vref{rule-icmp1}), which contains  the compression rulse we saw below and a NoAck fragmentation rule.
+Once the SCHC packet and its device ID are known, the \pfunction{SCHCProtocol}{schc\_recv} method is called. This method looks the the rule ID, the associated rule and apply it. If it is a compression rule, it will returns the uncompressed packet. 
 
-~~
+\pythonnxt[firstline=45,lastline=46, firstnumber=45]{ping_core1.py}
 
-Program continues with the definition of the \texttt{processPkt} function, we will detail after.
-
-~~
-
-The position of the SCHC instance has to be specified. In our example, we are located in the core. The default port number is \texttt{0x5C4C}, the core SCHC instance will wait incoming tunneled SCHC packet on that port.
-
-~~~
-
-Then the SCHC machine is defined. A \texttt{lower\_layer} is created to be used by the SCHC machine when SCHC packet will have to be sent, and a \texttt{system} is created to manage events. From that \texttt{system} a reference to the \texttt{scheduler} is extracted to be used in the \texttt{processPkt} function as a global variable. Then the \texttt{schc\_machine} is created and the previously created rule manager is associated to it.
-
-~~~
-
-Finally, the scapy \texttt{sniff} function is called. The \texttt{processPkt} function is called each time a packet is received on interface \texttt{ens3}\footnote{Scapy allowed to listen simultaneously to several interfaced, for example \texttt{["ens3", "he-ipv6"]}, but since this feature returns sometime some errors, we prefer to listen only to interface \texttt{"ens3"} which will carried tunneled IPv6 packets from Hurricane Electrics.}.
-
-~~~
-
-The \texttt{processPkt} function starts by calling the SCHC machine and then analyses the received packets\footnote{This function must be called regularely, which is the case when some traffic occurs in the network, so it is important not to filter too much incoming traffic.}. 
-
-The functions looks for two types of packets, SCHC tunneled packets coming from devices and IPv6 tunneled packets from Hurricane Electric. The latter are easily recognisable through the use of IP proto 41. When such packet is received, the first 34 bytes corresponding to the Ethernet and IPv4 headers are removed, and the resulting IPv6 packet is send to the SCHC machine for compression.
+If the IP protocol value is 41, then we have a tunneled IPv6 packet over IPv4. The first 34 bytes corresponding to the Ethernet and IPv4 headers are removed, and the resulting IPv6 packet is send to the SCHC machine for compression. The SCHC packet will be sent using \Index{\texttt{scapy\_connection}} functions.
 
 \subsection{The execution}
 
-Start the program, is sudo mode:
+Start the program, in sudo mode:
 
-\begin{lstlisting}
+\begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\small, escapechar=@]
 $ sudo python3.9 ping_core1.py 
-\end{lstlisting}
+\end{termc}
 
 The program will display the rules and cursor spins, indicating the SCHC machine is running\footnote{The number of received packets determines the spinning speed. It takes 10 packets to change the cursor appearance.}. 
 
-Start pinging the device defined in the rule, the \texttt{-c 1} limits the number of ping messages. 
+Start pinging the device, from any host in the Internet with IPv6 connectivity. to the IPv6 address of the device defined in the rule, the \texttt{-c 1} limits the number of ping messages. 
 
-\begin{lstlisting}
+\begin{termc}[backgroundcolor=\color{pink!20}, basicstyle=\ttfamily\small, escapechar=@]
 $ ping6 2001:470:1f21:1d2::1 -c 1
-\end{lstlisting}
+\end{termc}
 
 Of course there is no answer to the ping, the openSCHC core instance displays some messages. They can be avoided, if the \texttt{verbose} argument is set to False or not specified when creating the \texttt{schc\_machine} object. 
 
-\begin{lstlisting}[basicstyle=\ttfamily\tiny]
+\begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\tiny, escapechar=@]
 schc recv-from-l3 None None b'`\x05\x0c\x00\x00\x10:8*\x01\xcb\x08\x90:\xbd\x00I\xe0\xa3\xec\x01Vv\x9c \x01\x04p...'
 schc parser {('IPV6.VER', 1): [6, 4], ('IPV6.TC', 1): [0, 8], ('IPV6.FL', 1): [330752, 20]...} 
 schc compression rule {'RuleID': 6, 'RuleIDLength': 3, 'Compression': [{'FID': 'IPV6.VER', 'FL': 4, ...}
 schc compression result b'\xc5\x40\x39\x61\x12\x07\x57\xa0\x09\x3c\x14\x7d\x80\x2a\xce...'/227
 schc fragmentation not needed size=227
-\end{lstlisting}
+\end{termc}
  
-The openSCHC compression is divided into several steps:
+This trace gives the openSCHC compression process divided into several steps:
 \begin{itemize}
 \item Parse the packet; from a sequence of byte received on the network, create a list of fields containing the field identification and their associated value.
 \item Find a valid compression rule; ask the rule manager to find a rule matching the parsed packet. The rule selection will also provide the device ID.
@@ -303,19 +340,22 @@ The openSCHC compression is divided into several steps:
 \item Send the SCHC packet to the device ID.
 \end{itemize}
 
-The first line (\texttt{recv-from-l3}) dumps the original IPv6 packet received by the compressor, corresponding in hexadecimal to:
+~~ 
 
-\begin{lstlisting}[basicstyle=\ttfamily\tiny]
+In more details:
+\begin{itemize}
+    \item The first line (\texttt{recv-from-l3}) dumps the original IPv6 packet received by the compressor, corresponding in hexadecimal to:
+\end{itemize}
+
+\begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\tiny, escapechar=@]
 60050c0000103a382a01cb08903abd0049e0a3ec0156769c200104701f2101d20000000000000001800051fb48b20000609f882600060ed2
-\end{lstlisting}
+\end{termc}
 
-~  
+\begin{itemize}
+    \item The second line (\texttt{parser}) shows three elements returned by the parser. The first one is the list of fields, the second one is the data following the list of fields and the third one is a status code. The parsed headers are displayed figure~\ref{list-parsed-icmpv6}:
+\end{itemize}
 
-The second line (\texttt{parser}) shows three elements returned by the parser. The first one is the list of fields, the second one is the data following the list of fields and the third one is a status code.
-
-The parsed headers are displayed figure:
-
-\begin{lstlisting}[caption={Header Fields of an ICMPv6 message}, label=fig-icmpv6-fields]
+\begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\small, escapechar=@, label=list-parsed-icmpv6, caption={Parsed IPv6/ICMPv6 header fields}]
 {('ICMPV6.CKSUM', 1): [20987, 16],
  ('ICMPV6.CODE', 1): [0, 8],
  ('ICMPV6.IDENT', 1): [18610, 16],
@@ -331,133 +371,78 @@ The parsed headers are displayed figure:
  ('IPV6.NXT', 1): [58, 8, 'fixed'],
  ('IPV6.TC', 1): [0, 8],
  ('IPV6.VER', 1): [6, 4]}
-\end{lstlisting}
+\end{termc}
+\begin{itemize}
 
-As shown in figure~\vref{fig-icmpv6-fields}, a header description is a dictionnary where keys are tuple Field ID, position\footnote{In this example, position is always 1 since no field is repeated several time.}, and the value is the tuple field value and value size in bits.
+As shown in figure~\vref{list-parsed-icmpv6}, a header description is a dictionnary where keys are tuple Field ID and position\footnote{In this example, position is always 1 since no field is repeated several time.}, and the value is the tuple containing field value and field size in bits.
+\end{itemize}
 
-The next element is the data:
+\begin{itemize}
+ The next return element is the data, i.e. the bytes following the parsed header:
+\end{itemize}
 
-\begin{lstlisting}
+\begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\small, escapechar=@]
 b'`\x9f\x88&\x00\x06\x0e\xd2'
-\end{lstlisting}
+\end{termc}
+\begin{itemize}
+and the error code is None since the parser recognize all the fields.
+\end{itemize}
 
-and the error code is None.
-
-~~
-
-The third line (\texttt{compression rule}). This no surprise, the rule 6/3 matches. The following listing gives the SCHC packet in hecadecimal:
+\begin{itemize}
+This no surprise, the rule 6/3 matches. 
+\end{itemize}
 
 
-\begin{lstlisting}
+\begin{itemize}
+
+\item The third line \texttt{compression result} gives the SCHC packet. Note the \texttt{/227}\footnote {227 \% 8 = 3.  Since the all the residues are byte alligned, the 3 represent the rule ID length. 5 bits of padding will have to be addeed.} at the end, indicating the length in bits. Converted in hexadecimal, we have:
+\end{itemize}
+
+
+\begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\small, escapechar=@]
 b'c5403961120757a0093c147d802aced3891640000c13f104c000c1da40'
-\end{lstlisting}
-
-~~~
-
-The fourth line \texttt{compression result} gives the SCHC packet. Note the \texttt{/227}\footnote {227 \% 8 = 3.  Since the all the residues are byte alligned, the 3 represent the rule ID length. 5 bits of padding will have to be addeed.} at the end, indicating the length in bits. 
+\end{termc}
 
 
+\begin{itemize}
+    \item Finally, no fragmentation is required, so the SCHC packet is directly sent on the tunnel. A frame capture of UDP frame with port 0x5C4C gives:
+\end{itemize}
 
-~~
 
-No fragmentation is required, so the SCHC packet is directly sent on the tunnel. A frame capture of UDP frame with port 0x5C4C gives:
 
-\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+\begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\footnotesize]
 >sudo tcpdump -nXi ens3 udp port 0x5C4C
 tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
 listening on ens3, link-type EN10MB (Ethernet), capture size 262144 bytes
 16:41:48.609729 IP 51.91.121.182.23628 > 83.199.24.39.8888: UDP, length 29
 	0x0000:  4500 0039 ac95 4000 4011 751f 335b 79b6  E..9..@.@.u.3[y.
-	0x0010:  53c7 1827 5c4c 22b8 0025 1936 c540 3961  S..'\L"..%.6.@9a
+	0x0010:  53c7 1827 5c4c 22b8 0025 1936[c540 3961  S..'\L"..%.6.@9a
 	0x0020:  1207 57a0 093c 147d 802a ced3 8e5f c000  ..W..<.}.*..._..
-	0x0030:  0c13 fbb5 8000 d951 80                   .......Q.
+	0x0030:  0c13 fbb5 8000 d951 80]                   .......Q.
 
-\end{lstlisting}
+\end{termc}
 
 \section{The Decompression Process}
 
+ Now that we send SCHC packet to the device, lets process the SCHC packet on this side.
+ 
 \subsection{Decompression}
 
-Let's do the same operation on the device side. The code is almost the same, the position is changed to \texttt{T\_POSITION\_DEVICE}, the interface name is adapted to its name on the device side.
+Let's do the same operation on the device side. The code is almost the same, as the core SCHC. It is important to note that the rules are excactly the same as the one we used in the core SCHC.
 
-\begin{lstlisting}[language=Python, caption={Program ping\_device1.py}, label=prog-ping-device1, basicstyle=\ttfamily\scriptsize]
-import sys
-# insert at 1, 0 is the script path (or '' in REPL)
-sys.path.insert(1, '../../src/')
+\pycomlst[firstline=46,lastline=57, firstnumber=46]{ping_device1.py}
 
-from scapy.all import *
-
-import gen_rulemanager as RM
-from protocol import SCHCProtocol
-from scapy_connection import *
-from gen_utils import dprint, sanitize_value
-
-import pprint
-import binascii
-import socket
-import ipaddress
+The position is changed to \texttt{T\_POSITION\_DEVICE}.  Since the \texttt{device\_id}, in our example, is based on a public IP address, the call to \texttt{https://api.ipify.org} returns the IPv4 public address of the device. We create a UDP socket for port 8888.
 
 
-# Create a Rule Manager and upload the rules.
-rm = RM.RuleManager()
-rm.Add(file="icmp1.json")
-rm.Print()
+\pycomnxt[firstline=59,lastline=69, firstnumber=59]{ping_device1.py}
 
-def processPkt(pkt):
-    """ called when scapy receives a packet, since this function takes only one argument,
-    schc_machine and scheduler must be specified as a global variable.
-    """
+The \texttt{lower\_layer}, \texttt{system} and \texttt{schc\_machine} are declared the same way as in the core SCHC.  The interface name is adapted to its name on the device side.
 
-    scheduler.run(session=schc_machine)
+\pycomnxt[firstline=35,lastline=43, firstnumber=35]{ping_device1.py}
 
-    # look for a tunneled SCHC pkt
-    if pkt.getlayer(Ether) != None: #HE tunnel do not have Ethernet
-        e_type = pkt.getlayer(Ether).type
-        if e_type == 0x0800:
-            ip_proto = pkt.getlayer(IP).proto
-            if ip_proto == 17:
-                udp_dport = pkt.getlayer(UDP).dport
-                if udp_dport == socket_port: # tunnel SCHC msg to be decompressed
-                    print ("tunneled SCHC msg")                    
-                    schc_pkt, addr = tunnel.recvfrom(2000)
-                    r = schc_machine.schc_recv(device_id=device_id, schc_packet=schc_pkt)
-                    print (r)
-            elif ip_proto==41:
-                schc_machine.schc_send(bytes(pkt)[34:])
-
-# Start SCHC Machine
-POSITION = T_POSITION_DEVICE
-
-from requests import get
-
-ip = get('https://api.ipify.org').text
-
-socket_port = 8888
-tunnel = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-tunnel.bind(("0.0.0.0", socket_port))
-
-device_id = 'udp:'+ip+":"+str(socket_port)
-print ("device_id is", device_id)
-
-lower_layer = ScapyLowerLayer(position=POSITION, socket=tunnel, other_end=None)
-system = ScapySystem()
-scheduler = system.get_scheduler()
-schc_machine = SCHCProtocol(
-    system=system,           # define the scheduler
-    layer2=lower_layer,      # how to send messages
-    role=POSITION,           # DEVICE or CORE
-    verbose = True)         
-schc_machine.set_rulemanager(rm)
-
-sniff(prn=processPkt, iface="en0") # scappy cannot read multiple interfaces
-
-\end{lstlisting}
-
- Since the \texttt{device\_id}, in our example, is based on a public IP address, the call to \texttt{https://api.ipify.org} returns the IPv4 public address of the device. 
- 
- ~~
-
-In the packet processing, a tunnel is identified. Even, if the scapy buffer, constains the packet, the regular \texttt{recvfrom} socket function is used to recover the data. They are sent to the SCHC machine, which decompress it and returns a field description.
+We go a little bit further in the processing 
+If in the packet processing, a tunnel is identified. Even, if the scapy buffer, constains the packet, the regular \texttt{recvfrom} socket function is used to recover the data. They are sent to the SCHC machine, which decompress it and returns a field description.
 
 \begin{lstlisting}
 {('ICMPV6.CKSUM', 1): ('CCCC', 16),
