@@ -61,13 +61,13 @@
 \draw (ident.text) node {\small{ident}};
 
 \draw [<->] (ident.west |- hline) -- coordinate(a) (ident.east |- hline) ;
-\draw (a) node [below] {\tiny{8 bits}};
+\draw (a) node [below] {\tiny{16 bits}};
 
 \draw (ident.east) node (seqno) [right, rectangle, draw, minimum height=1cm, minimum width=1cm, fill=blue!10]{};
 \draw (seqno.text) node {\small{seqno}};
 
 \draw [<->] (seqno.west |- hline) -- coordinate(a) (seqno.east |- hline) ;
-\draw (a) node [below] {\tiny{8 bits}};
+\draw (a) node [below] {\tiny{16 bits}};
 
 \draw (seqno.east) node (data) [right, rectangle, draw, minimum height=1cm, minimum width=2cm]{};
 \draw (data.text) node {\small{data}};
