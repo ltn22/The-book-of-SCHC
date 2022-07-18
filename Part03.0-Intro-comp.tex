@@ -292,19 +292,81 @@ First, a test done to ensure that the frame has an Ethernet encapsulation\footno
     \item and a destination port of \texttt{0x5C4C} indicating a SCHC packet.
 \end{itemize}
 
-If all these conditions are met, we are sure that the socket has received a packet. We read the socket and get the message (\texttt{schc\_pkt}) and the device address (\texttt{addr}) which send the SCHC packet. 
+If all these conditions are met, we are sure that the socket has received a packet from a device, we will see in the following step how to process it.
 
 ~
 
-The next step is to build the \Index{DeviceID} (\texttt{other\_end}) by concatenating the \texttt{udp} keyword, followed with the sender IPv4 address and its port number. The DeviceID must match the one stored in the rule (cf. Listing~\vref{rule-icmp1}).
+Let's focus on the incoming Ping request.
 
-~~
 
-Once the SCHC packet and its device ID are known, the \pfunction{SCHCProtocol}{schc\_recv} method is called. This method looks the the rule ID, the associated rule and apply it. If it is a compression rule, it will returns the uncompressed packet. 
 
 \pythonnxt[firstline=45,lastline=46, firstnumber=45]{ping_core1.py}
 
-If the IP protocol value is 41, then we have a tunneled IPv6 packet over IPv4. The first 34 bytes corresponding to the Ethernet and IPv4 headers are removed, and the resulting IPv6 packet is send to the SCHC machine for compression. The SCHC packet will be sent using \Index{\texttt{scapy\_connection}} functions.
+If the IP protocol value is 41, then we have a tunneled IPv6 packet over IPv4. The first 34 bytes corresponding to the Ethernet and IPv4 headers are removed, and the resulting IPv6 packet is send to the SCHC machine for compression with the \pfunction{SCHCProtocol}{schc\_send} method. 
+
+~~
+
+This function will trigger the emission of SCHC packet: 
+\begin{itemize}
+    \item if the compressed SCHC packet enters in one frame, it is directly sent,
+    \item otherwise a fragmentation rule is applied and several SCHC packets can be sent.
+\end{itemize}
+
+The function returns:
+\begin{itemize}
+    \item \texttt{None} if a compression rule and optionally a fragmentation rule are found.
+    \item False if a rule is missing.
+\end{itemize}
+
+
+~~
+
+
+The SCHC packet will be sent using \Index{\texttt{scapy\_connection}} functions.
+
+ \begin{figure}[!ht] 
+\centering 
+
+
+	\begin{tikzpicture}[scale=0.8, transform shape]
+
+	\draw (0,0) node(SCHC)[rectangle, minimum size=2cm, draw, fill=palerod]{}; 
+	\draw(SCHC) node {\small{SCHC}};
+	\draw(SCHC.north) node [above]{\small{Core}};
+	
+	\draw(SCHC.south) -- ++(0, -1) coordinate(a);
+	\draw (a) -- ++(-2, 0);
+	\draw (a) -- ++(2, 0);
+	
+	\path (SCHC) -- ++(5, 0) coordinate (HE);
+	
+	\draw (HE) node (HEbox)[cloud, minimum width=3cm, minimum height= 2cm, draw, fill=pink!20] {};
+	\draw (HE) node  {\small{ping}};
+	\draw (HEbox.north) node [above] {\small{Application}};
+
+	
+	\path (SCHC) -- ++(-7, 0) coordinate (dev);
+	\draw (dev) node(SCHC_dev)[rectangle, minimum size=2cm, draw, fill=gray!10]{}; 
+	\draw(dev) node {\small{SCHC}};
+	\draw (dev) node[cloud, minimum size=4cm, draw]{}; 
+	\draw (SCHC_dev.north) node [above] {\small{Device}};
+	
+	
+	\draw [very thick] (dev.south) to [bend right=80] node [below, sloped] {UDP}  node [above, sloped] {SCHC packet} (SCHC.south);
+	
+		\draw [double, blue, ->] (HE) to [bend left=45] (SCHC.south);
+
+\draw [->, decoration={text color=blue,
+            text along path,
+            text={Ping Request},
+            text align={center},
+            raise=0.2cm, reverse path}, decorate,blue] (HE) to [bend left=45]  (SCHC.south);
+
+
+	\end{tikzpicture}
+\caption{SCHC core processing a Ping Request from an Application} 
+\label{fig-topo} 
+\end{figure} 
 
 \subsection{The execution}
 
@@ -439,190 +501,132 @@ The position is changed to \texttt{T\_POSITION\_DEVICE}.  Since the \texttt{devi
 
 The \texttt{lower\_layer}, \texttt{system} and \texttt{schc\_machine} are declared the same way as in the core SCHC.  The interface name is adapted to its name on the device side.
 
-\pycomnxt[firstline=35,lastline=43, firstnumber=35]{ping_device1.py}
+\pycomnxt[firstline=35,lastline=41, firstnumber=35]{ping_device1.py}
 
-We go a little bit further in the processing 
-If in the packet processing, a tunnel is identified. Even, if the scapy buffer, constains the packet, the regular \texttt{recvfrom} socket function is used to recover the data. They are sent to the SCHC machine, which decompress it and returns a field description.
 
-\begin{lstlisting}
-{('ICMPV6.CKSUM', 1): ('CCCC', 16),
- ('ICMPV6.CODE', 1): [0, 8],
- ('ICMPV6.IDENT', 1): [31025, 16],
- ('ICMPV6.SEQNO', 1): [8749, 16],
- ('ICMPV6.TYPE', 1): [128, 8],
- ('IPV6.APP_IID', 1): [5323434993581979292, 64],
- ('IPV6.APP_PREFIX', 1): [3026923662209629440, 64],
- ('IPV6.DEV_IID', 1): [b'\x00\x00\x00\x00\x00\x00\x00\x01', 64],
- ('IPV6.DEV_PREFIX', 1): [b' \x01\x04p\x1f!\x01\xd2', 64],
- ('IPV6.FL', 1): [0, 20],
- ('IPV6.HOP_LMT', 1): [255, 8],
- ('IPV6.LEN', 1): ('LLLL', 16),
- ('IPV6.NXT', 1): [58, 8],
- ('IPV6.TC', 1): [0, 8],
- ('IPV6.VER', 1): [6, 4]}
-\end{lstlisting}
-
-Note that \texttt{IPV6.LEN} and \texttt{ICMPV6.CKSUM} to, which a \texttt{compute-*} CDA had been associated, contain respectively \texttt{'LLLL'} and \texttt{'CCCC'} values\footnote{In fact, these values will be computed directly by scapy when generating a packet from this field description.}.
-
-\subsection{Device optimization}
-
-In the previous example (cf. listing~\vref{prog-ping-device1}) we started to reconstruct the packet. We can optimize the process on the device. The rule 6/3 (cf. rule figure~\vref{rule-icmp1}) has been associated to the ping traffic. For the downlink, the type is an Echo Request (128) and for the uplink the type is an Echo Reply (129). The other fields remain unchanged in both directions.
-
+It's time now, to look how a SCHC packet is processed. If the IP protocol is 17, the upper layer is UDP. We check the destination port (here 8888) to see if the message is for us. If it is the case, then we can get officially the message from the socket, to clear the buffers. We read the socket and get the message (\texttt{schc\_pkt}) and the device address (\texttt{addr}) which send the SCHC packet. 
 
 ~~
 
-Therefore, when the device receives an SCHC packet with rule 6/3, it can send it back to the SCHC core instance to answer with a reply.
-We simplify the ping request processing by testing if the rule ID is equal\footnote{Remeber the comparison must be done on the rule ID value and length}.. to the pink6 rule. In that case, the device just echoes the SCHC packet containing the sequence number and identifier, as show in listing figure~\vref{prog-ping-device2}.
+Then we call the function \pfunction{SCHCProtocol}{schc\_recv} with the device ID we computed before and the SCHC packet we just received. This function  returns:
+\begin{itemize}
+    \item \texttt{None}. This is the normal behavior when receiving a fragment. Only the last fragment will return the full messages. Intermediary fragments will return this value.
+    \item a byte array with the uncompressed packet.
+    \item \texttt{False} when a error occurs.
+\end{itemize}
 
-\begin{lstlisting}[language=Python, caption={Program ping\_device2.py}, label=prog-ping-device2, basicstyle=\ttfamily\scriptsize]
-import sys
-# insert at 1, 0 is the script path (or '' in REPL)
-sys.path.insert(1, '../../src/')
+Since we are just doing compression, the \texttt{schc\_recv} function returns the full packet. You may notice that some fields have changed. That's the case for \Indexr{IPV6.FL}, \Indexr{PV6.HOP\_LMT}[0.4cm]. 
 
-from scapy.all import *
 
-import gen_rulemanager as RM
-from protocol import SCHCProtocol
-from scapy_connection import *
-from gen_utils import dprint, sanitize_value
-from gen_bitarray import *
 
-import pprint
-import binascii
-import socket
-import ipaddress
+\subsection{Device optimization}
 
-# Create a Rule Manager and upload the rules.
-rm = RM.RuleManager()
-rm.Add(file="icmp1.json")
-rm.Print()
+In the previous program, we started to reconstruct the packet. It can be then processed normally or even forwarded to another destination. Nevertheless, we can optimize the behavior and process directly the SCHC packet. This simplify the protocol stack implementation in a very constrained device. 
 
-def processPkt(pkt):
-    """ called when scapy receives a packet, since this function takes only one argument,
-    schc_machine and scheduler must be specified as a global variable.
-    """
+~~
 
-    scheduler.run(session=schc_machine)
+\pycomlst[firstline=7,lastline=11, firstnumber=7]{ping_device2.py}
 
-    # look for a tunneled SCHC pkt
-    if pkt.getlayer(Ether) != None: #HE tunnel do not have Ethernet
-        e_type = pkt.getlayer(Ether).type
-        if e_type == 0x0800:
-            ip_proto = pkt.getlayer(IP).proto
-            if ip_proto == 17:
-                udp_dport = pkt.getlayer(UDP).dport
-                if udp_dport == socket_port: # tunnel SCHC msg to be decompressed
-                    print ("tunneled SCHC msg")                    
-                    schc_pkt, addr = tunnel.recvfrom(2000)
-                    schc_bbuf = BitBuffer(schc_pkt)
-                    rule = rm.FindRuleFromSCHCpacket(schc=schc_bbuf, device=device_id)
-                    if rule[T_RULEID] == 6 and rule[T_RULEIDLENGTH]== 3:
-                        print ("ping")
-                        tunnel.sendto(schc_pkt, addr)
-                    else: 
-                        r = schc_machine.schc_recv(device_id=device_id, 
-                            schc_packet=schc_pkt)
-            elif ip_proto==41:
-                schc_machine.schc_send(bytes(pkt)[34:])
+We have to identify the rule in the SCHC packet, we just receive. We need to transform the Byte Array, into a bit array. Therefore, the \Index{\texttt{gen\_bitarray}} module is imported\footnote{Other importations will be used when IPv6 packet will be manipulated.}.
 
-# Start SCHC Machine
-POSITION = T_POSITION_DEVICE
+\pycomlst[firstline=65,lastline=74, firstnumber=65]{ping_device2.py}
 
-from requests import get
+The SCHC packet is first transformed into a bit array with the \pfunction{gen\_bitarray}{BitBuffer} constructor. 
 
-ip = get('https://api.ipify.org').text
+~~
 
-socket_port = 8888
-tunnel = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-tunnel.bind(("0.0.0.0", socket_port))
+We can call the function \pfunction{gen\_rulemanager}{FindRuleFromSCHCpacket} with the device ID and the SCHC packet. If a rule ID is found, the function will return it\footnote{We are very optimistic in this example. If no rule is found, the function will return None and the program will crash.}.
 
-device_id = 'udp:'+ip+":"+str(socket_port)
-print ("device_id is", device_id)
+~~~
 
-lower_layer = ScapyLowerLayer(position=POSITION, socket=tunnel, other_end=None)
-system = ScapySystem()
-scheduler = system.get_scheduler()
-schc_machine = SCHCProtocol(
-    system=system,           # define the scheduler
-    layer2=lower_layer,      # how to send messages
-    role=POSITION,           # DEVICE or CORE
-    verbose = True)         
-schc_machine.set_rulemanager(rm)
+We check the rule, to see if it correspond to the ping dedicated rule 6/3. We need to test the value and the length, since two different rules may have the same value (remember chapter~\vref{chap-rules}).
 
-sniff(prn=processPkt, iface="en0") # scappy cannot read multiple interfaces
+~~~
+
+If the rule in the SCHC packet corresponds, we directly answer to the core. We use a trick in the rule definition linked to direction (cf. rule~\vref{rule-icmp1}). 
+
+\begin{lstlisting}[basicstyle=\ttfamily\tiny, caption={extract from rule 6/3 for ping traffic}, backgroundcolor=\color{yellow}]
+
+{
+    "DeviceID" : "udp:83.199.24.39:8888",
+    "SoR" : [
+	{
+	    "RuleID": 6,
+	    "RuleIDLength": 3,
+	    "Compression": [
+...
+		{"FID": "ICMPV6.TYPE",  "DI": "DW", "TV": 128,"MO": "equal","CDA": "not-sent"},
+		{"FID": "ICMPV6.TYPE",  "DI": "UP", "TV": 129,"MO": "equal","CDA": "not-sent"},
+...
+	       ]
 
 \end{lstlisting}
+
+As you have may notice, the \Indexr{ICMPV6.TYPE} is defined twice: one for downlink direction, (i.e. from the network to the device) and one in the uplink direction. For the former, the code for an ICMPv6 Echo Request (128) is set and for the latter, it corresponds to the code of an ICMPv6 Echo Reply (129).
+
+So if we just echo the SCHC packet, it will be as a response, and application address, sequence number and identifier it carries will be included in the response. Therefore we just need to send the packet to the core SCHC we got the address when we read the socket.
+
+
+
+We can optimize the process on the device. The rule 6/3 (cf. rule figure~\vref{rule-icmp1}) has been associated to the ping traffic. For the downlink, the type is an Echo Request (128) and for the uplink the type is an Echo Reply (129). The other fields remain unchanged in both directions.
+
+Let's continue with this hack and see how the core should process the SCHC packet.
+
+ \begin{figure}[!ht] 
+\centering 
+
+
+	\begin{tikzpicture}[scale=0.8, transform shape]
+
+	\draw (0,0) node(SCHC)[rectangle, minimum size=2cm, draw, fill=palerod]{}; 
+	\draw(SCHC) node {\small{SCHC}};
+	\draw(SCHC.north) node [above]{\small{Core}};
+	
+	\draw(SCHC.south) -- ++(0, -1) coordinate(a);
+	\draw (a) -- ++(-2, 0);
+	\draw (a) -- ++(2, 0);
+	
+	\path (SCHC) -- ++(5, 0) coordinate (HE);
+	
+	\draw (HE) node (HEbox)[cloud, minimum width=3cm, minimum height= 2cm, draw, fill=pink!20] {};
+	\draw (HE) node  {\small{ping}};
+	\draw (HEbox.north) node [above] {\small{Application}};
+
+	
+	\path (SCHC) -- ++(-7, 0) coordinate (dev);
+	\draw (dev) node(SCHC_dev)[rectangle, minimum size=2cm, draw, fill=gray!10]{}; 
+	\draw(dev) node {\small{SCHC}};
+	\draw (dev) node[cloud, minimum size=4cm, draw]{}; 
+	\draw (SCHC_dev.north) node [above] {\small{Device}};
+	
+
+	\draw [very thick,blue, <->] (dev.south) to [bend right=80]  (SCHC.south);	
+	\draw [very thick, blue, <->, decoration={text color=blue,
+            text along path,
+            text={rule ID+residue+data},
+            text align={center},
+            raise=0.2cm}, decorate] (dev.south) to [bend right=80] (SCHC.south);
+	
+	\draw [double, grey, ->] (HE) to [bend left=45] (SCHC.south);
+
+
+
+
+	\end{tikzpicture}
+\caption{SCHC core processing a Ping Request from an Application} 
+\label{fig-topo} 
+\end{figure} 
+
 \section{Generating packets}
 
-Now, the SCHC core instance receives SCHC packets from the device, in the tunnel. 
-The call to the SCHC machine schc\_recv methods returns the uncompressed packet, which is sent through scapy.
+Now, the SCHC core instance receives SCHC packets from the device through the UDP tunnel. We can decompress the SCHC message and send it to the Internet.
 
-\begin{lstlisting}[language=Python, caption={Program ping\_core2.py}, label=prog-ping-core2, basicstyle=\ttfamily\scriptsize]
-import sys
-# insert at 1, 0 is the script path (or '' in REPL)
-sys.path.insert(1, '../../src/')
+\pythonnxt[firstline=31,lastline=44, firstnumber=31]{ping_core2.py}
 
-from scapy.all import *
+The processing is almost the same as for the device, if a UDP message with destination port corresponding to the tunnel (i.e. \texttt{0x5C4C}) is detected in the packet, then the socket is read. It differs in the way the device is identified. Here, the sender address returned by the socket is used to build the \Index{device ID} (stored in \texttt{other\_end} variable). 
 
-import gen_rulemanager as RM
-from protocol import SCHCProtocol
-from scapy_connection import *
-from gen_utils import dprint, sanitize_value
+The call to the SCHC machine \pfunction{SCHCProtocol}{schc\_recv} method may return the uncompressed packet,in the scapy format\footnote{If the SCHC packet was a fragment, it will have been buffered until the last fragment is received. In that case None would have been returned.}. 
 
-import pprint
-import binascii
-import socket
-import ipaddress
+If the packet is returned, the \pfunction{scapy}{show} function display it and then it is sent on the Hurricane Electric interface.
 
 
-# Create a Rule Manager and upload the rules.
-rm = RM.RuleManager()
-rm.Add(file="icmp1.json")
-rm.Print()
-
-def processPkt(pkt):
-    """ called when scapy receives a packet, since this function takes only one argument,
-    schc_machine and scheduler must be specified as a global variable.
-    """
-
-    scheduler.run(session=schc_machine)
-
-    # look for a tunneled SCHC pkt
-    if pkt.getlayer(Ether) != None: #HE tunnel do not have Ethernet
-        e_type = pkt.getlayer(Ether).type
-        if e_type == 0x0800:
-            ip_proto = pkt.getlayer(IP).proto
-            if ip_proto == 17:
-                udp_dport = pkt.getlayer(UDP).dport
-                if udp_dport == socket_port: # tunnel SCHC msg to be decompressed
-                    print ("tunneled SCHC msg")                    
-                    schc_pkt, addr = tunnel.recvfrom(2000)
-                    other_end = "udp:"+addr[0]+":"+str(addr[1])
-                    print("other end =", other_end)
-                    uncomp_pkt = schc_machine.schc_recv(device_id=other_end,
-                                 schc_packet=schc_pkt)
-                    uncomp_pkt.show()
-                    if uncomp_pkt != None:
-                        send(uncomp_pkt, iface="he-ipv6")
-            elif ip_proto==41:
-                schc_machine.schc_send(bytes(pkt)[34:])
-
-# Start SCHC Machine
-POSITION = T_POSITION_CORE
-
-socket_port = 0x5C4C
-tunnel = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-tunnel.bind(("0.0.0.0", socket_port))
-
-lower_layer = ScapyLowerLayer(position=POSITION, socket=tunnel, other_end=None)
-system = ScapySystem()
-scheduler = system.get_scheduler()
-schc_machine = SCHCProtocol(
-    system=system,           # define the scheduler
-    layer2=lower_layer,      # how to send messages
-    role=POSITION,           # DEVICE or CORE
-    verbose = False)         
-schc_machine.set_rulemanager(rm)
-
-sniff(prn=processPkt, iface="ens3") # scappy cannot read multiple interfaces
-\end{lstlisting}
