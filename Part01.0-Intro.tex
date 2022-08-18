@@ -1,40 +1,66 @@
-\chapter{Getting started}
+\chapter{Getting started with openSCHC}
 
-OpenSCHC offers an easy way to understand and experiment the compression/decompression mechanism as well as the fragmentation protocol. We start be illustrating compression and fragmentation process defined in \rfc{8724}. To simplify experiments, OpenSCHC does not require to run on a LPWAN network, experiments can run on a regular network using UDP tunnels.
+OpenSCHC provides for an easy way to understand and experiment with both the compression/decompression mechanism and the fragmentation protocol of SCHC. We start by illustrating the compression and fragmentation processes as defined in \rfc{8724}. To keep things simple, openSCHC does not have to run on an actual LPWAN network, experiments can be run on a regular network using UDP tunnels.
 
 
 \section{Installation}\label{chap-plat}
 
-\subsection{Download code}
+\subsection{Downloading the code}
 
-To download openSCHC, just clone the openschc repository on github.
+In order to download openSCHC, just clone the GitHub openschc repository onto your computer,
 
 
 \begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\small]
 > git clone git@github.com:openschc/openschc.git
 \end{termc}
 
-and use the scapy branch.
+and select the "scapy" branch.
 
 \begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\small, escapechar=@]
 > git checkout scapy
 \end{termc}
 
-\subsection{Setting up the environment}
+\subsection{Getting IPv6 connectivity}
 
-For testing SCHC compression and fragmentation d-features, we need to generate some IPv6 packets, that will be caught by openSCHC and processed. 
+We want to try out the openSCHC compression and fragmentation features on IPv6 traffic (as illustrated in \rfc{8724}). We therefore need to make our machine able to receive IPv6 traffic. Furthermore, we would like our machine to be able to receive IPv6 traffic destined to several IPv6 hosts (see \ref{chap-TestNetTopo}).
 
 ~
 
-An IPv6 prefix is needed for that traffic. A simple way to get a global IPv6 prefix is to use \Index{Hurricane Electric} tunnel broker:
+A simple way to get a global IPv6 prefix is to use the services of a tunnel broker such as \Index{Hurricane Electric}, see Figure~\ref{fig-IPv6conn}.
+
+ \begin{figure}[!ht] 
+\centering 
+
+
+	\begin{tikzpicture}[scale=0.8, transform shape]
+
+	\draw (0,0) node(SCHC)[rectangle, minimum size=2cm, draw, fill=palerod]{}; 
+	\draw(SCHC) node {\small{SCHC}};
+	
+
+	\path (SCHC) -- ++(5, 3) coordinate (HE);
+	
+	\draw (HE) node(HEBox) [cloud, minimum width=3cm, minimum height= 2cm, draw, fill=pink!20] {};
+	\draw (HE) node  {\small{HE}};
+
+	\draw [double, dashed] (HEBox.south) to [bend left=45] node [above, sloped] {IPv6} node [below, sloped] {over IPv4 tunnel} (SCHC.east);
+	
+
+	\end{tikzpicture}
+\caption{setting up IPv6 connectivity} 
+\label{fig-IPv6conn} 
+\end{figure} 
+
+To set up the IPv6 tunnel:
+
 \begin{itemize}
-\item Go to that website \url{https://tunnelbroker.net/}, 
-\item Create an account if needed or just log in, 
-\item Select \textit{Create another Tunnel},
+\item go to the website \url{https://tunnelbroker.net/}, 
+\item create an account if needed or just log in, 
+\item select \textit{Create another Tunnel},
 \item enter the IPv4 address of the machine running openSCHC and a location,
 \end{itemize}
 
-Once the tunnel created, you will find some configuration examples, that will help you to configure your machine.
+Once the tunnel is created, you will find some configuration examples, which will help you  configuring your machine.
 
 For Ubuntu 20, it will be in the \texttt{/etc/\Index{netplan}} directory:
 
@@ -67,7 +93,7 @@ network:
 \end{termc}
 
 \noindent 
-Type the following comment to validate your new network configuration:
+Type the following command to validate your new network configuration:
 \begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\tiny, escapechar=@]
 >sudo netplan try
 Warning: Stopping systemd-networkd.service, but it can still be activated by:
@@ -82,7 +108,7 @@ Changes will revert in 111 seconds
 Configuration accepted.
 >sudo netplan apply
 \end{termc}
-and your machine interfaces looks the following:
+and your machine interfaces should now look this:
 
 
 
@@ -117,15 +143,16 @@ lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
         TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
 \end{termc}
 
-Note that in this example, the machine is multi-homed; \texttt{ens3} interface is configured with the regular IPv6 address and \texttt{he-ipv6} with the Hurricane Electric IPv6 address. 
+Note that, in this example, the machine is multi-homed: the \texttt{ens3} interface is configured with the regular IPv6 address and the \texttt{he-ipv6} interface is configured with the Hurricane Electric IPv6 address. 
 
-\section{Network Topology}
+\section{Building our Test Network}\label{chap-TestNetTopo}
 
-We have currently configured the network for the code part of SCHC. SCHC sends SCHC packet to another device which will also run SCHC. On that second machine, install the github repository, too.
+We want to reproduce a typical LPWAN network topology: an Internet-based application server communicates with IoT devices via an LPWAN Network Server (see \rfc{8376}).
+We have already configured our SCHC instance on the "Core" side. On a second machine that will represent the IoT device, let's now install openSCHC as well.
 
 ~
 
-With openSCHC the following topology (cf. figure~\vref{fig-topo}) will be used for the rest of the tutorial. SCHC packet will be tunneled over the Internet to reach the other SCHC instance. 
+The topology described in Figure~\ref{fig-topo} will be used throughout the rest of the tutorial. The compressed and fragmented SCHC packets will be tunneled over UDP across the Internet between the Device SCHC instance and the Core SCHC instance, as if they were carried over an LPWAN network.
 
  \begin{figure}[!ht] 
 \centering 
@@ -143,45 +170,52 @@ With openSCHC the following topology (cf. figure~\vref{fig-topo}) will be used f
 	
 	\path (SCHC) -- ++(5, 3) coordinate (HE);
 	
-	\draw (HE) node [cloud, minimum width=3cm, minimum height= 2cm, draw, fill=pink!20] {};
-	\draw (HE) node  {\tiny{Application}};
+	\draw (HE) node(HEBox) [cloud, minimum width=3cm, minimum height= 2cm, draw, fill=pink!20] {};
+	\draw (HE) node  {\small{HE}};
 
-	\draw [double, dashed] (HE) to [bend left=45] node [above, sloped] {IPv6} node [below, sloped] {over IPv4 tunnel} (SCHC);
-	
-	\path (SCHC) -- ++(-7, 1) coordinate (dev);
+	\draw [double, dashed] (HEBox.south) to [bend left=45] node [above, sloped] {IPv6} node [below, sloped] {over IPv4 tunnel} (SCHC.east);
+
+	\path (HE) -- ++(5, 0) coordinate (App);
+
+	\draw (App) node(AppBox) [cloud, minimum width=3cm, minimum height= 2cm, draw, fill=pink!20] {};
+	\draw (App) node  {\small{Application}};
+	\draw [thick] (HEBox.east) to node [above] {IPv6} (AppBox.west);
+
+	\path (SCHC) -- ++(-6, 1) coordinate (dev);
 	\draw (dev) node(SCHC_dev)[rectangle, minimum size=2cm, draw, fill=gray!10]{}; 
 	\draw(dev) node {\small{SCHC}};
 	\draw (dev) node[cloud, minimum size=4cm, draw]{}; 
 	\draw (SCHC_dev.north) node [above] {\small{Device}};
 	
 	
-	\draw [very thick] (dev.south) to [bend right=80] node [below, sloped] {UDP}  node [above, sloped] {SCHC packet} (SCHC.south);
+	\draw [very thick] (SCHC_dev.south) to [bend right=80] node [below, sloped] {UDP}  node [above, sloped] {SCHC packet} (SCHC.south);
 	
 
-	\path (SCHC) -- ++(-7, -4) coordinate (dev);
+	\path (SCHC) -- ++(-6, -4) coordinate (dev);
 	\draw (dev) node(SCHC_dev)[rectangle, minimum size=2cm, draw, dotted ]{}; 
 	\draw(dev) node {\small{SCHC}};
 	\draw (dev) node[cloud, minimum size=4cm, draw, dotted]{}; 
 	\draw (SCHC_dev.north) node [above] {\small{Device}};
 	
 	
-	\draw [very thick, dotted] (dev.south) to [bend right=80]  (SCHC.south);
+	\draw [very thick, dotted] (SCHC_dev.south) to [bend right=80]  (SCHC.south);
 	
 
 	\end{tikzpicture}
-\caption{Network Topology} 
+\caption{Test Network Topology} 
 \label{fig-topo} 
 \end{figure} 
 
-In this architecture we see that we will need at least 2 SCHC instances. One located in the core that will act as a router between the IPv6 network and the constrained network, illustrated in our example by an UDP tunnel, but is could also be the LPWAN network. 
+The "Core" SCHC instance will act as a router between the IPv6 network and the constrained network, illustrated in our example by the UDP tunnel (but it could be made to be a real LPWAN network). 
 ~~
 
-The others instances of SCHC will be located in the devices. We will define \Index{upstream} traffic as the communication between the device and the core, and without any surprise, the other direction will be called \Index{downstream}. 
+As per \rfc{8724}, the messages exchanged between SCHC entities are called "\Index{SCHC Packet}s". 
 
 ~~
 
+Likewise, the LPWAN traffic from the device to the core is called "\Index{uplink}",
 
-Messages exchanged between these entities are called \Index{SCHC packet}s. 
+and the reverse traffic is called "\Index{downlink}" .
 
 ~~
 
