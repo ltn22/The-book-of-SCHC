@@ -1,31 +1,30 @@
 
-\chapter{Rules}\label{chap-rules}
+\chapter{Installing SCHC rules in openSCHC}\label{chap-rules}
 
-SCHC works between two entities. Usually, one is a constrained end-device and the other one is a core equipment acting as a router. To allow both of them to perform the same actions, or more precisely one action and a reverse action, such as compression and decompression or fragmentation and reassembly, a common set of rules must be shared between these two entities.
+SCHC is a protocol taking place between two SCHC entities connected via a link. Usually, one SCHC entity is implemented in a constrained end-device and the other one is implemented in a core equipment acting as a router. To allow the pair to perform the same action, or more precisely an action on one end and the inverse action and the other end, e.g., compression and decompression, or fragmentation and reassembly, a common set of rules must be shared between these two entities.
 
 ~
 
-The distinction between a device and a core allows to differentiate communication going upstream from the device to the core and downstream in the opposite direction. The device usually owns a limited number of rules corresponding to the traffic  generated and received by that device. On the contrary, the core instance of SCHC must be aware of all the devices' rules. Even if all the devices have the same behavior, SCHC treats each device individually. 
+The distinction between a device and a core tells which communication is uplink (from the device to the core) and which is downlink (opposite direction). The device usually contains a small set of compression of fragmentation rules tailored to the traffic generated and received by that device only. Conversely, the core instance of SCHC must know all the devices' rule sets. Even if all the devices happen to be identical, the SCHC core treats each device as if it were unique. 
 
-~~
+\section{Rule ID's}
 
-All rules are identified by a \Index{rule ID}. The rule ID is a unique binary sequence for an association between a device and a core. The rule ID length is not specified by the standard and are chosen when the rules are specified. They must be different inside a set of rule. The only constraint is that rule ID cannot overlap.
-
+Rules are identified by a \Index{rule ID}. A rule ID is a binary sequence that must be unique within the scope of the link between a device SCHC instance and a core SCHC instance. \rfc{8724} does not specify the length of the rule ID's: the lengths are chosen as the rules are defined, the lengths can even be different for different rules within the same set. Within a set of rules, the rule ID representations must not overlap, when read from left to right. 
 For instance:
 
 \begin{itemize}
-\item\texttt{0} and \texttt{111111} are two valid rules ID
-\item \texttt{01} and \texttt{0101} not not valid since they share the same first two bits.
+\item\texttt{0} and \texttt{111111} are two valid rule ID's
+\item \texttt{01} and \texttt{0101} is not a valid pair of rule ID's within the same set: on receiving the sequence of bits 0101 (from left to right), it is impossible to tell which rule is being received.
 \end{itemize}
 
 ~
 
 
-Rules may be represented in binary, but the decimal notation is also used for compactness. In this book, we will represent a rule ID with the \texttt{rule ID value/rule ID length}. For instance \texttt{3/8} indicates a rule ID stored on 8 bits with value 3.
+Rule ID's could be described using their binary representation but, for compactness, the decimal notation \texttt{rule ID value/rule ID length} will be used in this book . For instance, \texttt{3/8} indicates a rule ID represented on 8 bits and having a decimal value of 3 (right-aligned), which is equivalent to the \texttt{00000011} binary representation.
 
 ~
 
-This notation can be misleading, if \texttt{1/2} and \texttt{127/8} taken from the example above are overlapping since they both start with \texttt{01}, \texttt{12/4} and \texttt{12/6} are two valuable rules, since when written in binary \texttt{1100} and \texttt{001100} do not share a common binary sequence.
+Pay attention that this notation can be misleading: for example, \texttt{1/2} and \texttt{5/4} don't look like they overlap, even though they do (binary \texttt{01} and \texttt{0101}); as another example, the pair \texttt{12/4} and \texttt{12/6} looks suspicious even though it is perfectly valid (binary \texttt{1100} and \texttt{001100}).
 
 \begin{figure}[tbp]
 \centerline{\includegraphics[width=1\columnwidth]{Pictures/binary-rule.png}}
@@ -33,9 +32,9 @@ This notation can be misleading, if \texttt{1/2} and \texttt{127/8} taken from t
 \label{fig-base64}
 \end{figure}
 
-\section{openSCHC rules}
+\section{Rules structure}\label{OpenSCHCRules}
 
-In openSCHC, a rule is defined in a JSON object:
+In the openSCHC implementation of SCHC, a rule is described with a JSON object, and the rule ID is expressed with the decimal notation introduced above:
 
 \begin{lstlisting}[backgroundcolor=\color{yellow}]
     {
@@ -44,7 +43,7 @@ In openSCHC, a rule is defined in a JSON object:
     }
 \end{lstlisting}
 
-There is two different rule formats, one for compression and the other for fragmentation. \Index{Compression} Rules contains the keyword \texttt{Compression} followed by an array, as shown the the minimal example below: 
+There are three different rule formats. The first one is used for \Index{Compression} Rules, which contain the \texttt{Compression} keyword followed by an array, as shown in the minimal example below: 
 
 \begin{lstlisting}[backgroundcolor=\color{yellow}]
    {
@@ -55,8 +54,7 @@ There is two different rule formats, one for compression and the other for fragm
    
 \end{lstlisting}
 
-   
-\Index{Fragmentation} rules uses the \texttt{Fragmentation} keyword followed by an object giving fragmentation parameters:
+The second format is used for \Index{Fragmentation} rules, which contain the \texttt{Fragmentation} keyword followed by an object describing the fragmentation parameters:
 
 \begin{lstlisting}[backgroundcolor=\color{yellow}]
     {
@@ -68,13 +66,8 @@ There is two different rule formats, one for compression and the other for fragm
     }
 \end{lstlisting}
 
-Fragmentation and compression rules share the same rule space, by construction a rule cannot be both compression and fragmentation. 
-An attentive reader may have also noticed that a fragmentation direction is present in the rule description. 
-In fact, compression rules are bi-directionnal and may be used to compress an header by the device and the core, but fragmentation rules are oriented.  
+Finally, the \Index{\texttt{NoCompression}} keyword is used to describe the mandatory default rule that SCHC resorts to for sending a packet when no valid compression rule was found to compress it.
 
-~
-
-Finally a \Index{\texttt{NoCompression}} keyword also exists and is the equivalent to the above example, indicating an uncompressed packet.
 
 \begin{lstlisting}[backgroundcolor=\color{yellow}]
    {
@@ -84,34 +77,43 @@ Finally a \Index{\texttt{NoCompression}} keyword also exists and is the equivale
    }
 \end{lstlisting}
 
+The fragmentation, compression and no-compression rules share the same rule ID space: the same rule ID cannot be used for both a compression rule and a fragmentation rule, for example. 
 
-\section{Rule Manager}
+An observant reader may have noticed that the fragmentation rule description includes a direction indicator. 
+Indeed, SCHC compression rules are bi-directional (the same rule can be used to compress a packet flowing from a device to the core or from the core to the device), but fragmentation rules are oriented (they only apply to either uplink of downlink traffic).  
 
-The \Index{Rule Manager} plays an important role in openSCHC. It has different goals:
+~
+
+
+
+\section{The Rule Manager}
+
+The \Index{Rule Manager} plays an important role in the openSCHC implementation of SCHC. It has multiple goals:
 \begin{itemize}
-    \item check the rule correctness
-    \item add default parameters, to simplify rule notation
-    \item display rules in a more synthetic format
-    \item find the best rule to compress or fragment a packet
-    \item find a rule from its rule ID.
+    \item check for the correctness of the rules external description,
+    \item add default parameter values, which allows simplifying the rules external description,
+    \item import external rule descriptions into internal storage,
+    \item display the rules in the  store in a more compact format than JSON,
+    \item find in the store a valid rule to compress or fragment an incoming packet with,\footnote{TODO: find a good rule, or better yet, the best rule, instead of the first valid one in the store.}
+    \item retrieve a rule from the store by its rule ID.
 \end{itemize}
 
-\subsection{Rule definition}
+\subsection{Adding Rules into the Rule Manager}\label{RuleDefinition}
 
-The above listing gives a simple python program used to manage the two rules we described before. 
+Listing \ref{rm1.py} shows a simple python program used to manage the two rules described in \ref{OpenSCHCRules}. 
 
 \pythonlst{rm1.py}
 
-This program import the \texttt{gen\_rulemanager} module defining the \texttt{\pfunction{gen\_rulemanager}{RuleManager}} class. 
+It first imports the \texttt{gen\_rulemanager} module, which defines the \texttt{\pfunction{gen\_rulemanager}{RuleManager}} class. 
 
 ~~
 
 
-The \texttt{\pfunction{gen\_rulemanager}{Add}} method allows to add a new rule.
+The \texttt{\pfunction{gen\_rulemanager}{Add}} method adds a new rule into the store.
 
 ~~~
 
-OpenSCHC displays, with the \pfunction{gen\_rulemanager}{Print}:
+The \pfunction{gen\_rulemanager}{Print} method displays the following:
 
 \begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\tiny, escapechar=@]
 ****************************************
@@ -129,47 +131,47 @@ Device: None
 \=======================================================================================/
 \end{termc}
 
-Compression rules contain the field descriptions (here empty) and Fragmentation rules contain the fragmentation parameters. Note that for fragmentation, the rule manager added some default parameters corresponding to \Index{no Ack} behavior.
+Compression rules normally contain header field descriptors (omitted in this simple example) and Fragmentation rules contain the fragmentation parameters. Note that, for the fragmentation rule used here, the Rule Manager added some default parameters corresponding to the \Index{no Ack} behavior of SCHC.
 
 
 
-\subsection{Set of rules}
+\subsection{Adding a Set of Rules}
 
-A device should contain a set of rules related to compression and fragmentation. In OpenSCHC, the SoR (\Index{Set of Rules}) is a JSON array. The following program has the same behavior as the previous one, but an array for rules is provided.
+A device should contain a set of rules related to compression and fragmentation. In openSCHC, the SoR (\Index{Set of Rules}) is a JSON array. The following program has the same behavior as the one shown in \ref{RuleDefinition}, but the rules are added with a single method call, using an array.
 
 \pythonlst{rm2.py}
 
-\subsection{Device identifier}
+\subsection{Attributing a Set of Rules to a Device}
 
-You may have noticed that, in the previous examples, the device was displayed as None. This can be appropriate when SCHC is instantiated on a device, since there is no ambiguity as to which device the rule set applies to. Conversely, when the SCHC instance is on the core network side, the set of rules must be associated with a device ID.
+You may have noticed that, in the previous examples, the device was displayed as None. This is appropriate when SCHC is instantiated on a device, since there is no ambiguity as to which device the rule set applies to. Conversely, when the SCHC instance resides on the core network side, each set of rules must be associated with a distinct device.
 
-The \Index{device identifier} is structured as a technology and an identifier in that technology:
+In openSCHC, the \Index{DeviceID} is structured as a link technology and an identifier within that link technology: 
 \begin{itemize}
-\item \Index{UDP tunnel}, as in the platform built in Chapter~\vref{chap-plat}. In that case the technology is \texttt{udp} and the identifier is the tunnel IP address end-point on the device side, followed by the port number used on that end point. For instance: \texttt{udp:83.199.24.39:8888}\footnote{If the device is behind a NAT, the IP address used must be the global address assigned to the NAT.}. 
-\item a \Index{LoRaWAN} device (\textit{not yet implemented}), the technology is \texttt{lorawan} and the identifier is the \textit{devEUI}\footnote{when a JSON structure is manipulated, the DeviceID literal must be expressed in decimal, not hexadecimal}.
+\item if the link technology is a \Index{UDP tunnel} (as in the test platform described in Chapter~\vref{chap-plat}), the technology keyword is \texttt{udp} and the identifier is the device-side tunnel endpoint IP address, followed by the port number used on that endpoint. A full DeviceID would therefore be, for instance, \texttt{udp:83.199.24.39:8888}\footnote{If the device is behind a NAT, the IP address used must be the global address assigned to the NAT.}. 
+\item for \Index{LoRaWAN} (\textit{not yet implemented}), the technology keyword is \texttt{lorawan} and the identifier is the \textit{devEUI}.
 
 \end{itemize}
 
 ~~
 
-Rules associated with a Device ID can be directly stored into the rule manager through the \pfunction{gen\_rulemanager}{Add} method as follows:
+While being stored into the rule manager via the the \pfunction{gen\_rulemanager}{Add} method, rules can be attributed to a DeviceID as follows:
 
 \begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\small, escapechar=@, language=Python]
-RM.Add(device="1234567890", dev_info=[rule1100, rule001100])
+RM.Add(device="udp:83.199.24.39:8888", dev_info=[rule1100, rule001100])
 \end{termc}
 
-Alternately, the JSON structure would be the following:
+Alternately, the following JSON structure could be used:
 
 \begin{termc}[backgroundcolor=\color{yellow}, basicstyle=\ttfamily\small, escapechar=@]
 {
-    "DeviceID": 1234567890,
+    "DeviceID": "udp:83.199.24.39:8888",
     "SoR" : [ ..... ]
 }
 \end{termc}
 
-\subsection{JSON file}
+\subsection{Importing rules from a JSON file}
 
-Rules can also be stored in a JSON file, the Rule Manager\texttt{Add} method uses the \texttt{file} argument. For instance:
+Rules can also be described in a JSON file, in which case the Rule Manager\texttt{Add} method is used with the \texttt{file} argument. For instance:
 
 \begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\small, escapechar=@, language=Python]
 rm.Add(file="icmp.json")
@@ -177,5 +179,5 @@ rm.Add(file="icmp.json")
 
 \section{Conclusion}
 
-We know the basic structure of rules, how to add them to the rule manager, so now, let's try to compression and fragment some traffic.
+We have reviewed how rules are structured and how they can be added to the rule manager store. Let's now try to compress and fragment some traffic.
 

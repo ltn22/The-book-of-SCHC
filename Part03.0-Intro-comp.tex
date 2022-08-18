@@ -1,9 +1,9 @@
 
-\chapter{Compressing Ping6}
+\chapter{Compressing ping6 messages}
 
 \section{Introduction}
 
-In this chapter, we are going to setup the compression of a ping6 request. An ICMPv6 request is composed of an IPv6 header, followed by a \Index{ICMPv6 request} message.
+In this chapter, we are going to setup the compression of an \Index{ICMPv6 Echo Request} message. Such a message is easy to generate from the command line of any IPv6-enabled computer, using the \texttt{ping6} command. It is composed of an IPv6 packet header, followed by the ICMPv6 Echo Request header and some data bytes.
 
 \begin{termc}[backgroundcolor=\color{gray!10}, basicstyle=\ttfamily\tiny, escapechar=@]
 Internet Protocol Version 6, Src: 2a01:cb08:903a:bd00:a8c4:5c6d:c2b5:84be, Dst: 
@@ -37,9 +37,9 @@ Internet Control Message Protocol v6
 0030  60 9a b0 db 00 0a ec b7  
 \end{termc}
 
-The following compression rule can be applied to that traffic.
+The following compression rule is able to compress that traffic.
 
-\begin{lstlisting}[basicstyle=\ttfamily\tiny, caption={rule 6/3 for ping traffic}, caption=fig-rule-ping, backgroundcolor=\color{yellow}]
+\begin{lstlisting}[basicstyle=\ttfamily\tiny, caption={rule 6/3 for ping traffic}, caption=ping-comp-rule, backgroundcolor=\color{yellow}]
 
 {
     "DeviceID" : "udp:83.199.24.39:8888",
@@ -73,87 +73,90 @@ The following compression rule can be applied to that traffic.
 
 
 
-\section{Understanding compression rules}
+\section{More details on compression rules}
 
-A rule contains a list of fields description:
+A rule contains a list of fields descriptors. Each field descriptor includes:
 \begin{itemize}
-    \item starting with a \Index{Field ID}. openSCHC uses a string structured with the protocol name (\texttt{IPV6} and \texttt{ICMPV6} in the rule above). Field ID uses keyword \texttt{\Index{FID}}.
+    \item a \Index{Field ID}: openSCHC uses a string structured with the protocol name (\texttt{IPV6} and \texttt{ICMPV6} in the rule above) and the field name for that protocol. The key for the Field ID is \texttt{\Index{FID}}.
 
-    \item A \Index{Target Value} (\texttt{TV}) may be present and contains the value the rule expected to find in the field.
+    \item an optional \Index{Target Value} (\texttt{TV}): it contains the value(s) that the rule expects to find in the field of the incoming packet.
 
-    \item A \Index{Direction Indicator} (\texttt{DI}) can be associated to a field. In the above example, \Indexr{\texttt{ICMPV6.TYPE}} is repeated twice for uplink and downlink. When the direction is not specified, openSCHC considers the field as bi-directionnal.
+    \item a \Index{Direction Indicator} (\texttt{DI}): this specifies the traffic direction (uplink, downlink or both) that this descriptor applies to. In the above example, the \Indexr{\texttt{ICMPV6.TYPE}} field descriptor appears twice in the rule, the first one is intended to match downlink traffic and the second one matches uplink traffic. When the direction is not specified, openSCHC considers that the field descriptor applies to both directions.
 
-    \item A \Index{Matching Operator} (\texttt{MO}) specifies the comparison between the target Value  (\texttt{TV}) and the Field Value (\texttt{FV}) present in the packet to be compressed. \rfc{8724} defines 4 MO:
+    \item a \Index{Matching Operator} (\texttt{MO}): this specifies how to compare the Target Value (\texttt{TV}) in the field descriptor and the value of the field (\texttt{FV}) of the packet to be compressed. \rfc{8724} defines 4 MO:
 
     \begin{itemize}
-    \item \texttt{\Index{ignore}}: the FV is ignored therefore, the result of the field comparison is always true.
-    \item \texttt{\Index{equal}}: the result of the comparison is true is the value contained in the \texttt{TV} is equal to the value contained if the \texttt{FV}. OpenSCHC allows integer and strings for the comparison.
-    \item \texttt{\Index{MSB}}: is true only if the first bits of the \texttt{TV} are equal to the first bits of the \texttt{FV}. The comparison length in bits is specified in the rule with the keywork \texttt{MO.val}. For string comparison, openSCHC impose a  multiple of 8 bits for the length.
-    \item \texttt{\Index{match-mapping}}: The \texttt{TV} contains an array of values. The comparison is true, if the \texttt{FV} appears somewhere in the list.
+    \item \texttt{\Index{ignore}}: the comparison always returns "true".
+    \item \texttt{\Index{equal}}: the result of the comparison is true if the value contained in the \texttt{TV} is equal to the value contained if the \texttt{FV}. OpenSCHC allows for comparison between integers and between strings.
+    \item \texttt{\Index{MSB}}: the comparison is true if the first bits of the \texttt{TV} are equal to the first bits of the \texttt{FV}. The number of bits to be compared is specified in the rule using the \texttt{MO.val} keyword. For string comparisons, openSCHC mandates that the length be a  multiple of 8 bits.
+    \item \texttt{\Index{match-mapping}}: the \texttt{TV} contains an array of values. The comparison is true if an element of \texttt{TV} is equal to \texttt{FV}.
     \end{itemize}
 
-    A rule is selected if all the comparison are true and the packet contains no other fields. 
+    A rule is valid to be used for compression if there is a one-to-one correspondence between the fields in the incoming packet and the field descriptors in the rule, and if all the field descriptor comparisons return true. 
 
 
-    \item When a rule is selected, the \Index{Compression Decompression Actions} (\texttt{CDA}) are applied to the packet fields. \rfc{8724} defines several CDAs, among them:
+    \item a \Index{Compression Decompression Actions} (\texttt{CDA}): when a rule is selected for compression, the \texttt{CDA} is applied to the packet field. \rfc{8724} defines several CDAs, among them:
 
     \begin{itemize}
-        \item \Indexs{\texttt{not-sent}}: the \texttt{FV} is not sent, the decompressor will use the value stored in the rule to recover the value\marge{not-sent}.
-        \item \Index{\texttt{value-sent}}: the value is explicitely sent as a residue. The decompressor will use the residue to recover the value.
-        \item \Index{\texttt{LSB}}: the least significant bits are sent as residue. The decompressor will combine the \texttt{TV} and the residue to recover the field. LSB can only be used with a MSB MO. No argument are needed for LSB. The LSB size is defined from the field size and the MSB size.
-        \item \Index{\texttt{mapping-sent}} : the index in the array is sent as residue. The decompressor will use the idenx to recover the value. This CDA can only be used with a match-mapping MO.
-        \item \Index{\texttt{compute-*}}: the \texttt{FV} is not sent, the decompressor will use a specific algorithm to recover the value, such as compute the length or compute a checksum.
+        \item \Indexs{\texttt{not-sent}}: the \texttt{FV} is not sent, the decompressor will use the TV stored in the rule to recover the field value\marge{not-sent}.
+        \item \Index{\texttt{value-sent}}: the value is explicitely sent as a compression residue. The decompressor will use the residue to rebuid the field value.
+        \item \Index{\texttt{LSB}}: the least significant bits are sent as a compression residue. The decompressor will concatenate the \texttt{TV} and the residue to rebuild the field. LSB can only be used with an MSB MO. No argument is needed for LSB. The LSB size is defined from the original field size and the MSB size.
+        \item \Index{\texttt{mapping-sent}}:  this CDA can only be used with a match-mapping MO. The index in the TV array is sent as residue. The decompressor will use the index to retrieve the value from the TV array.
+        \item \Index{\texttt{compute-*}}: the \texttt{FV} is not sent, the decompressor will use a specific algorithm to recover the value. For example, a length field can be recomputed from the undelying layer payload size, of a checksum can be recomputed from the payload if it is ascertained that the lower layer is protected by a stronger integrity mechanism (e.g., a CRC).
     \end{itemize}
 
 \end{itemize}
 
-\section{Compressing an ICMPv6 echo request packet}
+\section{Compressing an ICMPv6 Echo Request packet}
 
 In the above example, the \Indexr{\texttt{IPV6.VERSION}} field is not sent, the value 6 is stored is the rule. 
 The \Indexr{\texttt{IPV6.NXT}} follows the same behavior, since ICMPv6 is expected, the \texttt{TV} is 58.
 
 ~
 
-Note that \Indexr{\texttt{IPV6.FL}} and \Indexr{\texttt{IPV6.HOP\_LMT}}[0.45cm] use the \Indexs{ignore}/\Indexs{not-sent}\marge{ignore/not-sent} combination. During the rule selection, the \texttt{FL} is not taken into account, but during decompression the value stored in the rule is used. The reason is that IPv6 Flow Label (\texttt{IPV6.FL}) can be different from 0, in the capture the value is \texttt{0x80800}. 
+Note that \Indexr{\texttt{IPV6.FL}} and \Indexr{\texttt{IPV6.HOP\_LMT}}[0.45cm] use the \Indexs{ignore}/\Indexs{not-sent}\marge{ignore/not-sent} combination. During the rule selection, \texttt{FL} is not taken into account, but during decompression the value stored in the rule is used. The reason for this is that IPv6 Flow Label (\texttt{IPV6.FL}) can be different from 0 in a ping6 request (the capture above shows a value of \texttt{0x80800}) but a constrained IoT device is not expected to take this field into account. 
 
 ~
 
-For IPv6 Hop Limit  (\Indexr{\texttt{IPV6.HOP\_LMT}}) the value cannot be forecast, depends of how many routers are crossed and may vary during from one packet to the other. The rule ignores the value and generate a hop limit of 64. To be valid, this implies that the device will not forward anymore the packet. If the device acts as a router the Hop Limit field must be sent.
+The IPv6 Hop Limit value cannot be anticipated, it depends on how many routers the packet as travelled through, and it may even vary from one packet to the next. In our example, the rule ignores the incoming value on compression and rebuilds a hop limit value of 64 on decompression. This behavior is valid if the device is assumed to not forward the packet any further. If the device is indeed an IP router, then the Hop Limit field value must be sent.
 
 ~
 
-The address fields compression is more interesting, there is not source or destination address in the SCHC rule. SCHC defines the device  and the application \Index{addresses}\footnote{This will apply also for UDP port number}. The rule becomes independent of the direction. OpenSCHC splits the addresses into a 64 bit long prefix and a 64 bit long \Index{IID}. 
+The compression of the address fields is a bit trickier: indeed, the SCHC rule bears no source or destination address. Instead, SCHC uses device and application \Index{addresses} fields\footnote{the same is true for UDP port numbers.}, which map to source and destination according to the traffic direction (uplink or downlink). The rule description can therefore be made independent of the direction.
 
-In our scenario the device address is not sent, since the value is known by the device. On the opposite, we allow any host to ping the device\footnote{This behavior has to be prohibited in a LPWAN network, for security reasons, since in this scenario we are using an UDP tunnel, there is no security issue.}. The destination address is fully sent to the device.
+OpenSCHC splits the addresses into a 64 bit prefix and a 64 bit \Index{IID}. 
+
+In our scenario, the device address is not sent, since the value is known by both the device and the core SCHC entities. Conversely, we allow any host on the Internet to ping the device\footnote{This behavior should be prohibited on a real LPWAN network, to conserve resources. Since we are using an UDP tunnel in our test setup, there is no such issue.}: the source address of the ping request is sent in full to the device, and the destination address of the ping reply is sent in full to the core (both subsume in the App address in the SCHC rule description).
 
 ~~
 
-At the ICMPv6 level, the type field is elided regarding the direction. The Echo value (128) is expected downlink; form the application to the device, and the Echo reply (129) on the other direction. In both cases the ICMPv6 code is expected to be 0.
+At the ICMPv6 level, the \texttt{Type} field is elided in a direction selective fashion: the Echo Request value (128) is expected downlink, and the Echo Reply value (129) is expected uplink. The ICMPv6 \texttt{Code} is expected to be 0 in both directions.
 
 ~~~
 
-The identifier (\Indexr{\texttt{ICMPv6.IDENT}}) and sequence number (\Indexr{\texttt{ICMPV6.SEQNO}}[0.45cm]) are not compressed and send as residue.
+The identifier (\Indexr{\texttt{ICMPv6.IDENT}}) and sequence number (\Indexr{\texttt{ICMPV6.SEQNO}}[0.45cm]) are not compressed, they are sent as a residue.
 
 ~~
 
-The other fields \Indexr{\texttt{IPV6.LENGTH}} and \Indexr{\texttt{ICMPV6.CHECKSUM}}[0.45cm] are not sent and computed by the other side.
+The other fields \Indexr{\texttt{IPV6.LENGTH}} and \Indexr{\texttt{ICMPV6.CHECKSUM}}[0.45cm] are not sent, they are recomputed on the decompression side.
 
 ~~
 
-The SCHC packet has the following format:
+The resulting SCHC packet has the following format:
 
 \begin{figure}[!ht] 
 \centering 
 \input{figs/residue}
-\caption{ICMPv6 Compression Residue} 
+\caption{ICMPv6 Packet Compressed} 
 \label{fig-residue} 
 \end{figure} 
 
-The rule ID takes 3 bits, followed by the compression \Index{residue}s, the ICMPv6 payload and some padding bits. Since the Rule ID length is 3 bit long and the rest is byte aligned, 5 bits are needed to align the SCHC packet on a  L2-word (i.e. 1 byte).
+The rule ID takes 3 bits, followed by the compression \Index{residue}s, the ICMPv6 payload and some padding bits. Since the Rule ID length is 3 bits long and the rest is an integer number of bytes, 5 bits are needed to byte-align the end of the SCHC packet, as needed by the underlying link protocol.
 
 \section {Compression process}
+% DB: why this title? It seems we are describing both the compression and the decompression.
 
-In OpenSCHC, SCHC Compresssion/Decompression (CD) and Frgamentation/Reassembly (FR) processes are done by the SCHC Machine.
+In openSCHC, the SCHC Compresssion/Decompression (CD) and Fragmentation/Reassembly (FR) processes are executed by the SCHC Machine.
 
 \begin{figure}[!ht] 
 \centering 
@@ -186,9 +189,9 @@ In OpenSCHC, SCHC Compresssion/Decompression (CD) and Frgamentation/Reassembly (
 \label{fig-schc-archi} 
 \end{figure} 
 
-Figure~\vref{fig-schc-archi} gives the architecture of the ping gateway. 
-\Index{Scapy} \textit{sniff} function gets traffic on the network. 
-This traffic is composed of IPv6 packets that could be compressed and tunneled SCHC packets that are decompressed. 
+Figure~\vref{fig-schc-archi} shows the architecture of the ping gateway. The 
+\Index{Scapy} \textit{sniff} function captures the traffic on the network. 
+This traffic comprises IPv6 packets to be compressed and UDP-tunneled SCHC packets to be decompressed. 
 
 
 
@@ -196,18 +199,18 @@ This traffic is composed of IPv6 packets that could be compressed and tunneled S
 \label{sec-compr_code}
 
 
-The scapy module calls the SCHC Machine, in charge of CD-FR processes. Layer 2 allows to send decompressed packet or a SCHC packet on the network. 
+The scapy module calls the SCHC Machine, which is in charge of the C/D and F/R processes. Layer 2 allows to inject decompressed IPv6 packets or UDP-tunneled SCHC packets into the internet. 
 
 \subsubsection{Main program}
 
 \pythonlst[firstline=1,lastline=15, firstnumber=1]{ping_core1.py}
 
 
-This program~\pprog{ping\_core1.py} shows how to compress ICMPv6 packets and send them on a UDP tunnel to a device. It starts with the modules importation from scapy, openSCHC and some regular python modules. Note the importation of the \Index{\texttt{scapy\_connection}} module, located on the working directory. This module implements the scheduler and the methods to send packets.
+This program~\pprog{ping\_core1.py} shows how to compress ICMPv6 packets and send them on a UDP tunnel to a device. It starts by importing the scapy modules, some openSCHC modules and some generic python modules. Note the importation of the \Index{\texttt{scapy\_connection}} module, located in the working directory. This module implements the scheduler and the methods that allow sending packets.
 
 \pythonnxt[firstline=18,lastline=22, firstnumber=18]{ping_core1.py}
 
-The compression process starts with the creation of a Rule Manager \texttt{rm} to include the rules from file \texttt{icmp.json} (cf. Listing~\vref{rule-icmp1}), which contains  the compression rules we saw below and a NoAck fragmentation rule.
+The compression process starts with the creation of a Rule Manager \texttt{rm}, followed by importing the rules from the file \texttt{icmp.json} (cf. Listing~\vref{rule-icmp1}), which contains the compression rules we discussed above and one NoAck fragmentation rule.
 
 
 \begin{lstlisting}[caption={rule icmp1.json}, backgroundcolor=\color{yellow}, label=rule-icmp1, basicstyle=\ttfamily\tiny],
@@ -249,25 +252,25 @@ The compression process starts with the creation of a Rule Manager \texttt{rm} t
   }
 \end{lstlisting}
 
-This rule must be adapted to your environment. The \texttt{DeviceID} must reflect the IPv4 public address of your device and the Target Value of \Indexr{\texttt{IPV6.DEV\_PREFIX}} must be set to a IPv6 prefix of your domain, such as the ones allocated by Hurricane Electric.
+The compression rule must be adapted to your environment: the \texttt{DeviceID} must reflect the IPv4 public address of your device and the Target Value in \Indexr{\texttt{IPV6.DEV\_PREFIX}} must be set to the IPv6 prefix of your domain, such as the one allocated by Hurricane Electric.
 
 \pythonnxt[firstline=48,lastline=57, firstnumber=48]{ping_core1.py}
 
-The position of the SCHC instance has to be specified. In our example, we define our role as a core. Then, we create the UDP tunnel to receive SCHC packets from devices. The default port number is \texttt{0x5C4C}.
+The position of the SCHC instance needs to be specified. In our example, we define our role as a core. Then, we create the UDP tunnel to be able to receive SCHC packets from devices. The default port number is \texttt{0x5C4C}.
 
-A \texttt{lower\_layer} is created to be used by the SCHC machine when SCHC packet will have to be sent, and a \texttt{system} is created to manage events. The latter includes a \Index{scheduler}.  Both are defined in the \Index{\texttt{scapy\_connection}} module. 
+A \texttt{lower\_layer} is created to be used by the SCHC Machine when SCHC packet have to be sent, and a \texttt{system} is created to manage events. It includes a \Index{scheduler}. Both are defined in the \Index{\texttt{scapy\_connection}} module. 
 
 
-From that \texttt{system} a reference to the \texttt{scheduler} is extracted to be used in the \texttt{processPkt} function as a global variable.
+From that \texttt{system} a reference to the \texttt{scheduler} is extracted to be used in the \texttt{processPkt} method, as a global variable.
 
 \pythonnxt[firstline=58,lastline=63, firstnumber=58]{ping_core1.py}
 
-The previously created classes are regrouped arounf a \Index{SCHC machine} which will process packets for compression and fragmentation. A \texttt{schc\_machine} instance is created and the previously created rule manager is associated to it.
+The previously created classes are regrouped around a \Index{SCHC Machine} which will process packets for compression and fragmentation. A \texttt{schc\_machine} instance is created and the previously created rule manager is associated to it.
 
 \pythonnxt[firstline=65,lastline=65, firstnumber=65]{ping_core1.py}
 
 
-Finally, the scapy \texttt{sniff} function is called. This last line never returns. The \texttt{processPkt} function is called each time a packet is received on interface \texttt{ens3}\footnote{Scapy allowed to listen simultaneously to several interfaced, for example \texttt{["ens3", "he-ipv6"]}, but since this feature returns sometime some errors, we prefer to listen only to interface \texttt{"ens3"} which will carried tunneled IPv6 packets from Hurricane Electrics.}.
+Finally, the scapy \texttt{sniff} function is called. This line never returns. The \texttt{processPkt} function is called each time a packet is received on interface \texttt{ens3}\footnote{Scapy allows to simultaneously listen  to nore than one interface, for example \texttt{["ens3", "he-ipv6"]}, but we have experienced that this feature sometime returns errors, therefore we prefer to only listen to interface \texttt{"ens3"}, which carries the tunneled IPv6 packets from Hurricane Electrics.}.
 
 \subsubsection{Frame processing}
 
@@ -277,52 +280,54 @@ The \texttt{processPkt} function starts by calling the SCHC machine through the 
 
 ~
 
-The functions looks for two types of packets:
+The functions looks for two types of packets in the incoming traffic:
 \begin{itemize}
-    \item SCHC tunneled packets coming from devices to the UDP port we defined (\texttt{0x5C4C} in our case),
-    \item IPv6 tunneled packets from Hurricane Electric easily recognisable through the use of IP proto 41.
+    \item UDP-tunneled SCHC packets arriving from devices and destined to the UDP port we defined (\texttt{0x5C4C} in our case),
+    \item tunneled IPv6 packets from Hurricane Electric, easily recognisable through the use of IP proto 41.
 \end{itemize}
 
 \pythonnxt[firstline=31,lastline=44, firstnumber=31]{ping_core1.py}
 
-First, a test done to ensure that the frame has an Ethernet encapsulation\footnote{That wouldbe the case, if the Hurrican Electric interface was directly listened by scapy.}. Then we filter the frames to keep only those with:
+First, a test is done to ensure that the frame has an Ethernet encapsulation\footnote{not really needed since we capture all packets through the ens3 interface. The test would be needed if we were to listen to both the ens3 and he-ipv6 interfaces, since the packets arriving on he-ipv6 do not have an Ethernet encapsulation.}.
+Then we filter the frames to keep only those with:
 \begin{itemize}
     \item an Ethertype equal to 0x800 indicating an IPv4 packet,
     \item an IPv4 protocol number equal to 17 indicating an UDP message,
     \item and a destination port of \texttt{0x5C4C} indicating a SCHC packet.
 \end{itemize}
 
-If all these conditions are met, we are sure that the socket has received a packet from a device, we will see in the following step how to process it.
+If all these conditions are met, we are sure that the socket has received a packet from a device; we will see in the following step how to process it.
 
 ~
 
-Let's focus on the incoming Ping request.
+Let's now focus on the incoming Ping6 request.
 
 
 
 \pythonnxt[firstline=45,lastline=46, firstnumber=45]{ping_core1.py}
 
-If the IP protocol value is 41, then we have a tunneled IPv6 packet over IPv4. The first 34 bytes corresponding to the Ethernet and IPv4 headers are removed, and the resulting IPv6 packet is send to the SCHC machine for compression with the \pfunction{SCHCProtocol}{schc\_send} method. 
+If the IP protocol value is 41, then we have a tunneled IPv6 packet over IPv4. The first 34 bytes corresponding to the Ethernet and IPv4 headers are removed, and the resulting IPv6 packet is sent to the SCHC machine for compression with the \pfunction{SCHCProtocol}{schc\_send} method. 
 
 ~~
 
-This function will trigger the emission of SCHC packet: 
+This function will trigger the emission of one or more SCHC packets: 
 \begin{itemize}
-    \item if the compressed SCHC packet enters in one frame, it is directly sent,
-    \item otherwise a fragmentation rule is applied and several SCHC packets can be sent.
+    \item if the compressed SCHC packet fits in a single frame of the underlying link technology, it is sent,
+    \item otherwise fragmentation is applied and several SCHC packets are sent.
 \end{itemize}
 
 The function returns:
 \begin{itemize}
-    \item \texttt{None} if a compression rule and optionally a fragmentation rule are found.
-    \item False if a rule is missing.
+    \item \texttt{None} if a compression rule and optionally a fragmentation rule were found
+    \item \testtt{False} if a compression rule or a fragmentation could not be found.
+    % DB: if we check that a NoCompression rule is always present, the case were a compression rule was not found should never arise?
 \end{itemize}
 
 
 ~~
 
 
-The SCHC packet will be sent using \Index{\texttt{scapy\_connection}} functions.
+The SCHC packet will be sent using the \Index{\texttt{scapy\_connection}} methods.
 
  \begin{figure}[!ht] 
 \centering 
@@ -365,10 +370,11 @@ The SCHC packet will be sent using \Index{\texttt{scapy\_connection}} functions.
 
 	\end{tikzpicture}
 \caption{SCHC core processing a Ping Request from an Application} 
-\label{fig-topo} 
+\label{fig-TopoScapy} 
 \end{figure} 
+% DB: improve this drawing to match that of the architecture.
 
-\subsection{The execution}
+\subsection{Running the code}
 
 Start the program, in sudo mode:
 
@@ -376,15 +382,15 @@ Start the program, in sudo mode:
 $ sudo python3.9 ping_core1.py 
 \end{termc}
 
-The program will display the rules and cursor spins, indicating the SCHC machine is running\footnote{The number of received packets determines the spinning speed. It takes 10 packets to change the cursor appearance.}. 
+The program will first display the rules after importing them into the store and then the cursor will spin, indicating that the SCHC machine is running\footnote{The rate of received packets determines the spinning speed: the cursor changes appearance every 10 incoming packets.}. 
 
-Start pinging the device, from any host in the Internet with IPv6 connectivity. to the IPv6 address of the device defined in the rule, the \texttt{-c 1} limits the number of ping messages. 
+Start pinging the device, from any host on the Internet with IPv6 connectivity, to the IPv6 address of the device defined in the rule. The \texttt{-c 1} command line argument limits the number of ping messages.
 
 \begin{termc}[backgroundcolor=\color{pink!20}, basicstyle=\ttfamily\small, escapechar=@]
 $ ping6 2001:470:1f21:1d2::1 -c 1
 \end{termc}
 
-Of course there is no answer to the ping, the openSCHC core instance displays some messages. They can be avoided, if the \texttt{verbose} argument is set to False or not specified when creating the \texttt{schc\_machine} object. 
+Of course, there is no answer to the ping at this time. The openSCHC core instance merely displays some messages (they can be turned off by setting the \texttt{verbose} argument to False, or by omitting it altogether, when the \texttt{schc\_machine} object is created). 
 
 \begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\tiny, escapechar=@]
 schc recv-from-l3 None None b'`\x05\x0c\x00\x00\x10:8*\x01\xcb\x08\x90:\xbd\x00I\xe0\xa3\xec\x01Vv\x9c \x01\x04p...'
@@ -394,12 +400,12 @@ schc compression result b'\xc5\x40\x39\x61\x12\x07\x57\xa0\x09\x3c\x14\x7d\x80\x
 schc fragmentation not needed size=227
 \end{termc}
  
-This trace gives the openSCHC compression process divided into several steps:
+This trace reveals how the openSCHC compression process is divided into several steps:
 \begin{itemize}
-\item Parse the packet; from a sequence of byte received on the network, create a list of fields containing the field identification and their associated value.
-\item Find a valid compression rule; ask the rule manager to find a rule matching the parsed packet. The rule selection will also provide the device ID.
-\item Apply the compression rule.
-\item Send the SCHC packet to the device ID.
+\item parse the packet; from a sequence of byte received on the network, create a list of fields containing the field identification and their associated value.
+\item find a valid compression rule; ask the rule manager to find a rule matching the parsed packet. The rule selection will also provide the device ID.
+\item apply the compression rule.
+\item send the SCHC packet to the device ID.
 \end{itemize}
 
 ~~ 
@@ -525,26 +531,6 @@ In the previous program, we started to reconstruct the packet. It can be then pr
 
 ~~
 
-\pycomlst[firstline=7,lastline=11, firstnumber=7]{ping_device2.py}
-
-We have to identify the rule in the SCHC packet, we just receive. We need to transform the Byte Array, into a bit array. Therefore, the \Index{\texttt{gen\_bitarray}} module is imported\footnote{Other importations will be used when IPv6 packet will be manipulated.}.
-
-\pycomlst[firstline=65,lastline=74, firstnumber=65]{ping_device2.py}
-
-The SCHC packet is first transformed into a bit array with the \pfunction{gen\_bitarray}{BitBuffer} constructor. 
-
-~~
-
-We can call the function \pfunction{gen\_rulemanager}{FindRuleFromSCHCpacket} with the device ID and the SCHC packet. If a rule ID is found, the function will return it\footnote{We are very optimistic in this example. If no rule is found, the function will return None and the program will crash.}.
-
-~~~
-
-We check the rule, to see if it correspond to the ping dedicated rule 6/3. We need to test the value and the length, since two different rules may have the same value (remember chapter~\vref{chap-rules}).
-
-~~~
-
-If the rule in the SCHC packet corresponds, we directly answer to the core. We use a trick in the rule definition linked to direction (cf. rule~\vref{rule-icmp1}). 
-
 \begin{lstlisting}[basicstyle=\ttfamily\tiny, caption={extract from rule 6/3 for ping traffic}, backgroundcolor=\color{yellow}]
 
 {
@@ -561,20 +547,32 @@ If the rule in the SCHC packet corresponds, we directly answer to the core. We u
 	       ]
 
 \end{lstlisting}
+As you have may notice, the \Indexr{ICMPV6.TYPE} is defined twice: one for downlink direction, (i.e. from the network to the device) and one in the uplink direction. For the former, the code for an ICMPv6 Echo Request (128) is set and, for the latter it corresponds to the code of an ICMPv6 Echo Reply (129).
 
-As you have may notice, the \Indexr{ICMPV6.TYPE} is defined twice: one for downlink direction, (i.e. from the network to the device) and one in the uplink direction. For the former, the code for an ICMPv6 Echo Request (128) is set and for the latter, it corresponds to the code of an ICMPv6 Echo Reply (129).
+The SCHC compressed packet do not contain the code itself, and the compression result of the Echo Request and the Echo Reply will look the same. So we can use this property to optimize the code on the device and base the response on the SCHC compressed packet directly, not on the decompressed one.
+~
+The first step is to identify the rule ID. The rule 6/3 (cf. rule figure~\vref{rule-icmp1}) has been associated to the ping traffic. If the rule in the SCHC packet corresponds, we directly send back the SCHC packet to the core, containing in its residue the IPv6 address of the application, the ping identifier and sequence number and the ping payload. 
 
-So if we just echo the SCHC packet, it will be as a response, and application address, sequence number and identifier it carries will be included in the response. Therefore we just need to send the packet to the core SCHC we got the address when we read the socket.
+\pycomlst[firstline=7,lastline=11, firstnumber=7]{ping_device2.py}
+
+We have to identify the rule in the SCHC packet, we just receive. We need to transform the Byte Array, into a bit array. Therefore, the \Index{\texttt{gen\_bitarray}} module is imported\footnote{Other importations will be used when IPv6 packet will be manipulated.}.
+
+\pycomnxt[firstline=65,lastline=74, firstnumber=65]{ping_device2.py}
+
+The SCHC packet is first transformed into a bit array with the \pfunction{gen\_bitarray}{BitBuffer} constructor. 
+
+~~
+
+We can call the function \pfunction{gen\_rulemanager}{FindRuleFromSCHCpacket} with the device ID and the SCHC packet. If a rule ID is found, the function will return it\footnote{We are very optimistic in this example. If no rule is found, the function will return None and the program will crash.}.
+
+~~~
+
+We check the rule to see if it corresponds to the ping dedicated rule 6/3. We need to test the value and the length, since two different rules may have the same value (remember chapter~\vref{chap-rules}).
 
 
-
-We can optimize the process on the device. The rule 6/3 (cf. rule figure~\vref{rule-icmp1}) has been associated to the ping traffic. For the downlink, the type is an Echo Request (128) and for the uplink the type is an Echo Reply (129). The other fields remain unchanged in both directions.
-
-Let's continue with this hack and see how the core should process the SCHC packet.
 
  \begin{figure}[!ht] 
 \centering 
-
 
 	\begin{tikzpicture}[scale=0.8, transform shape]
 
@@ -609,24 +607,271 @@ Let's continue with this hack and see how the core should process the SCHC packe
 	
 	\draw [double, grey, ->] (HE) to [bend left=45] (SCHC.south);
 
-
-
-
 	\end{tikzpicture}
-\caption{SCHC core processing a Ping Request from an Application} 
-\label{fig-topo} 
+\caption{SCHC on device processing a Ping Request from an Application and replying} 
+\label{fig-topo2} 
 \end{figure} 
+
+With this simple manipulation, the SCHC core will receive a SCHC message through the tunnel. Let's continue and see how the core should process the SCHC packet.
 
 \section{Generating packets}
 
-Now, the SCHC core instance receives SCHC packets from the device through the UDP tunnel. We can decompress the SCHC message and send it to the Internet.
+Now, the SCHC core instance receives SCHC packets from the device through the UDP tunnel.
+We can decompress the SCHC message and send it to the Internet.
 
-\pythonnxt[firstline=31,lastline=44, firstnumber=31]{ping_core2.py}
+\pythonlst[firstline=31,lastline=44, firstnumber=31]{ping_core2.py}
 
 The processing is almost the same as for the device, if a UDP message with destination port corresponding to the tunnel (i.e. \texttt{0x5C4C}) is detected in the packet, then the socket is read. It differs in the way the device is identified. Here, the sender address returned by the socket is used to build the \Index{device ID} (stored in \texttt{other\_end} variable). 
 
-The call to the SCHC machine \pfunction{SCHCProtocol}{schc\_recv} method may return the uncompressed packet,in the scapy format\footnote{If the SCHC packet was a fragment, it will have been buffered until the last fragment is received. In that case None would have been returned.}. 
+The call to the SCHC machine \pfunction{SCHCProtocol}{schc\_recv} method may return the uncompressed packet, in the scapy format\footnote{If the SCHC packet was a fragment, it will have been buffered until the last fragment is received. 
+In that case None would have been returned.}. 
 
-If the packet is returned, the \pfunction{scapy}{show} function display it and then it is sent on the Hurricane Electric interface.
+If the packet is returned, the \pfunction{scapy}{show} function displays it and then it is sent on the Hurricane Electric interface.
+
+ \begin{figure}[!ht] 
+\centering 
+
+	\begin{tikzpicture}[scale=0.8, transform shape]
+
+	\draw (0,0) node(SCHC)[rectangle, minimum size=2cm, draw, fill=palerod]{}; 
+	\draw(SCHC) node {\small{SCHC}};
+	\draw(SCHC.north) node [above]{\small{Core}};
+	
+	\draw(SCHC.south) -- ++(0, -1) coordinate(a);
+	\draw (a) -- ++(-2, 0);
+	\draw (a) -- ++(2, 0);
+	
+	\path (SCHC) -- ++(5, 0) coordinate (HE);
+	
+	\draw (HE) node (HEbox)[cloud, minimum width=3cm, minimum height= 2cm, draw, fill=pink!20] {};
+	\draw (HE) node  {\small{ping}};
+	\draw (HEbox.north) node [above] {\small{Application}};
+
+	
+	\path (SCHC) -- ++(-7, 0) coordinate (dev);
+	\draw (dev) node(SCHC_dev)[rectangle, minimum size=2cm, draw, fill=gray!10]{}; 
+	\draw(dev) node {\small{SCHC}};
+	\draw (dev) node[cloud, minimum size=4cm, draw]{}; 
+	\draw (SCHC_dev.north) node [above] {\small{Device}};
+	
+	\draw [very thick,] (dev.south) to [bend right=80]  (SCHC.south);	
+	\draw [double, grey, <-, blue] (HE) to [bend left=45] (SCHC.south);
+
+	\draw [very thick, blue, <->, decoration={text color=blue,
+            text along path, reverse path,
+            text={ICMPv6 Echo Reply},
+            text align={center},
+            raise=0.2cm}, decorate, ] (HE) to [bend left=45] (SCHC.south);
 
 
+	\end{tikzpicture}
+\caption{SCHC core generating an IPv6 packet} 
+\label{fig-topo3} 
+\end{figure} 
+
+\section{Execution}
+
+\subsection{On the application}
+
+On the application, a regular ping command is typed, which this time returns a message:
+
+\begin{termc}[backgroundcolor=\color{pink!20}, basicstyle=\ttfamily\tiny, escapechar=@]
+\$ ping6 -c 1 -s 1 dev2.openschc.net
+PING dev2.openschc.net(2001:470:1f21:1d2::2 (2001:470:1f21:1d2::2)) 1 data bytes
+9 bytes from 2001:470:1f21:1d2::2 (2001:470:1f21:1d2::2): icmp_seq=1 ttl=244
+
+--- dev2.openschc.net ping statistics ---
+1 packets transmitted, 1 received, 0% packet loss, time 0ms\end{termc}
+\end{termc}
+
+Note that the \ac{RTT} is measured at 0ms since a UDP tunnel is used between the SCHC core and the device. 
+Delay will have been higher if a real \ac{LPWAN} network is used.
+
+\subsection{On the SCHC core}
+
+On the SCHC core, OpenSCHC is launched. It loads the rules and wait for incoming IPv6 packets.
+
+\begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\tiny]
+\$ sudo python3 ping_core2.py 
+****************************************
+Device: udp:54.37.158.10:8888
+/-------------------------\
+|Rule 6/3            110  |
+|---------------+---+--+--+------------------------------+-------------+----------------\
+|IPV6.VER       |  4| 1|BI|                             6|EQUAL        |NOT-SENT        |
+|IPV6.TC        |  8| 1|BI|                             0|EQUAL        |NOT-SENT        |
+|IPV6.FL        | 20| 1|BI|                             0|IGNORE       |NOT-SENT        |
+|IPV6.LEN       | 16| 1|BI|------------------------------|IGNORE       |COMPUTE-LENGTH  |
+|IPV6.NXT       |  8| 1|BI|                            58|EQUAL        |NOT-SENT        |
+|IPV6.HOP_LMT   |  8| 1|BI|                           255|IGNORE       |NOT-SENT        |
+|IPV6.DEV_PREFIX| 64| 1|BI|              200104701f2101d2|EQUAL        |NOT-SENT        |
+|IPV6.DEV_IID   | 64| 1|BI|              0000000000000002|EQUAL        |NOT-SENT        |
+|IPV6.APP_PREFIX| 64| 1|BI|------------------------------|IGNORE       |VALUE-SENT      |
+|IPV6.APP_IID   | 64| 1|BI|------------------------------|IGNORE       |VALUE-SENT      |
+|ICMPV6.TYPE    |  8| 1|DW|                           128|EQUAL        |NOT-SENT        |
+|ICMPV6.TYPE    |  8| 1|UP|                           129|EQUAL        |NOT-SENT        |
+|ICMPV6.CODE    |  8| 1|BI|                             0|EQUAL        |NOT-SENT        |
+|ICMPV6.CKSUM   | 16| 1|BI|                             0|IGNORE       |COMPUTE-CHECKSUM|
+|ICMPV6.IDENT   | 16| 1|BI|                             0|IGNORE       |VALUE-SENT      |
+|ICMPV6.SEQNO   | 16| 1|BI|                             0|IGNORE       |VALUE-SENT      |
+\---------------+---+--+--+------------------------------+-------------+----------------/
+/-------------------------\
+|Rule 12/11     00001100  |
+!=========================+=============================================================\
+!v Fragmentation mode : NoAck    header dtag 2 Window  0 FCN  3                     DW v!
+!v No Tile size specified                                                              v!
+!v RCS Algorithm: RCS_RFC8724                                                          v!
+\=======================================================================================/
+/-------------------------\
+|Rule 13/11     00001101  |
+!=========================+=============================================================\
+!^ Fragmentation mode : NoAck    header dtag 2 Window  0 FCN  3                     UP ^!
+!^ No Tile size specified                                                              ^!
+!^ RCS Algorithm: RCS_RFC8724                                                          ^!
+\=======================================================================================/
+\end{termc}
+
+An incoming IPv6 packet arrives, then parsed and compressed, if a rule is found. Since the compressed size is compatible with the UDP tunnel MTU\footnote{200 bits}, fragmentation is not needed.
+
+\begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\tiny]
+schc schc_send udp:51.91.121.182:23628 udp:54.37.158.10:8888
+schc parser {('IPV6.VER', 1): [6, 4], 
+             ('IPV6.TC', 1): [0, 8], 
+             ('IPV6.FL', 1): [212084, 20], 
+             ('IPV6.LEN', 1): [9, 16, 'fixed'], 
+             ('IPV6.NXT', 1): [58, 8, 'fixed'], 
+             ('IPV6.HOP_LMT', 1): [52, 8, 'fixed'], 
+             ('IPV6.APP_PREFIX', 1): [b' \x01A\xd0\x03\x02"\x00', 64], 
+             ('IPV6.APP_IID', 1): [b'\x00\x00\x00\x00\x00\x00\x13\xb3', 64],
+             ('IPV6.DEV_PREFIX', 1): [b' \x01\x04p\x1f!\x01\xd2', 64], 
+             ('IPV6.DEV_IID', 1): [b'\x00\x00\x00\x00\x00\x00\x00\x02', 64], 
+             ('ICMPV6.TYPE', 1): [128, 8], 
+             ('ICMPV6.CODE', 1): [0, 8], 
+             ('ICMPV6.CKSUM', 1): [40528, 16], 
+             ('ICMPV6.IDENT', 1): [382, 16], 
+             ('ICMPV6.SEQNO', 1): [1, 16]} b'\x00' None
+schc compression rule {'RuleID': 6, 'RuleIDLength': 3, 'Compression': [
+    {'FID': 'IPV6.VER', 'FL': 4, 'FP': 1, 'DI': 'BI', 'TV': 6, 'MO': 'EQUAL', 'CDA': 'NOT-SENT'}, 
+    {'FID': 'IPV6.TC', 'FL': 8, 'FP': 1, 'DI': 'BI', 'TV': 0, 'MO': 'EQUAL', 'CDA': 'NOT-SENT'}, 
+    {'FID': 'IPV6.FL', 'FL': 20, 'FP': 1, 'DI': 'BI', 'TV': 0, 'MO': 'IGNORE', 'CDA': 'NOT-SENT'}, 
+    {'FID': 'IPV6.LEN', 'FL': 16, 'FP': 1, 'DI': 'BI', 'TV': None, 'MO': 'IGNORE', 'CDA': 'COMPUTE-LENGTH'}, 
+    {'FID': 'IPV6.NXT', 'FL': 8, 'FP': 1, 'DI': 'BI', 'TV': 58, 'MO': 'EQUAL', 'CDA': 'NOT-SENT'}, 
+    {'FID': 'IPV6.HOP_LMT', 'FL': 8, 'FP': 1, 'DI': 'BI', 'TV': 255, 'MO': 'IGNORE', 'CDA': 'NOT-SENT'}, 
+    {'FID': 'IPV6.DEV_PREFIX', 'FL': 64, 'FP': 1, 'DI': 'BI', 'TV': b' \x01\x04p\x1f!\x01\xd2', 'MO': 'EQUAL', 'CDA': 'NOT-SENT'}, 
+    {'FID': 'IPV6.DEV_IID', 'FL': 64, 'FP': 1, 'DI': 'BI', 'TV': b'\x00\x00\x00\x00\x00\x00\x00\x02', 'MO': 'EQUAL', 'CDA': 'NOT-SENT'}, 
+    {'FID': 'IPV6.APP_PREFIX', 'FL': 64, 'FP': 1, 'DI': 'BI', 'TV': None, 'MO': 'IGNORE', 'CDA': 'VALUE-SENT'}, 
+    {'FID': 'IPV6.APP_IID', 'FL': 64, 'FP': 1, 'DI': 'BI', 'TV': None, 'MO': 'IGNORE', 'CDA': 'VALUE-SENT'}, 
+    {'FID': 'ICMPV6.TYPE', 'FL': 8, 'FP': 1, 'DI': 'DW', 'TV': 128, 'MO': 'EQUAL', 'CDA': 'NOT-SENT'}, 
+    {'FID': 'ICMPV6.TYPE', 'FL': 8, 'FP': 1, 'DI': 'UP', 'TV': 129, 'MO': 'EQUAL', 'CDA': 'NOT-SENT'}, 
+    {'FID': 'ICMPV6.CODE', 'FL': 8, 'FP': 1, 'DI': 'BI', 'TV': 0, 'MO': 'EQUAL', 'CDA': 'NOT-SENT'}, 
+    {'FID': 'ICMPV6.CKSUM', 'FL': 16, 'FP': 1, 'DI': 'BI', 'TV': 0, 'MO': 'IGNORE', 'CDA': 'COMPUTE-CHECKSUM'}, 
+    {'FID': 'ICMPV6.IDENT', 'FL': 16, 'FP': 1, 'DI': 'BI', 'TV': 0, 'MO': 'IGNORE', 'CDA': 'VALUE-SENT'}, 
+    {'FID': 'ICMPV6.SEQNO', 'FL': 16, 'FP': 1, 'DI': 'BI', 'TV': 0, 'MO': 'IGNORE', 'CDA': 'VALUE-SENT'}], 
+    'META': {'UP_RULES': 15, 'DW_RULES': 15}}
+schc compression result b'\xc4\x00\x28\x3a\x00\x60\x44\x40\x00\x00\x00\x00\x00\x00\x02\x76\x60\x2f\xc0\x00\x20\x00'/171
+protocol.py, schc_send, core_id:  udp:51.91.121.182:23628 device_id:  udp:54.37.158.10:8888 sender_delay 0 destination udp:54.37.158.10:8888 position core
+schc fragmentation not needed size=171
+protocol.py udp:54.37.158.10:8888
+protocol.py (bytearray(b'\xc4\x00(:\x00`D@\x00\x00\x00\x00\x00\x00\x02v`/\xc0\x00 \x00'), 'udp:54.37.158.10:8888')
+scapy_conection.py: send_pkt, dest  udp:54.37.158.10:8888 packet bytearray(b'\xc4\x00(:\x00`D@\x00\x00\x00\x00\x00\x00\x02v`/\xc0\x00 \x00')
+Queue running event -> 0, callback -> send_packet
+\end{termc}
+
+Then the core gets the response from the device. Find the rule ID, apply decompression and returns a scapy structure that is displayed and sent.
+
+\begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\tiny]
+tunneled SCHC msg
+other end = udp:54.37.158.10:8888
+uncomp_pkt ('udp:54.37.158.10:8888', <IPv6  version=6 tc=0 fl=0 nh=ICMPv6 hlim=255 src=2001:470:1f21:1d2::2 dst=2001:41d0:302:2200::13b3 |<ICMPv6EchoReply  id=0x17e seq=0x1 data=bytearray(b'\x00') |>>) type <class 'tuple'>
+###[ IPv6 ]### 
+  version   = 6
+  tc        = 0
+  fl        = 0
+  plen      = None
+  nh        = ICMPv6
+  hlim      = 255
+  src       = 2001:470:1f21:1d2::2
+  dst       = 2001:41d0:302:2200::13b3
+###[ ICMPv6 Echo Reply ]### 
+     type      = Echo Reply
+     code      = 0
+     cksum     = None
+     id        = 0x17e
+     seq       = 0x1
+     data      = bytearray(b'\x00')
+
+WARNING: Incompatible L3 types detected using <class 'scapy.layers.inet6.IPv6'> instead of <class 'scapy.layers.inet.IP'> !
+.
+Sent 1 packets.
+schc schc_send udp:51.91.121.182:23628 udp:54.37.158.10:8888
+schc parser {('IPV6.VER', 1): [6, 4], 
+             ('IPV6.TC', 1): [0, 8], 
+             ('IPV6.FL', 1): [0, 20], 
+             ('IPV6.LEN', 1): [9, 16, 'fixed'], 
+             ('IPV6.NXT', 1): [58, 8, 'fixed'], 
+             ('IPV6.HOP_LMT', 1): [255, 8, 'fixed'], 
+             ('IPV6.APP_PREFIX', 1): [b' \x01\x04p\x1f!\x01\xd2', 64], 
+             ('IPV6.APP_IID', 1): [b'\x00\x00\x00\x00\x00\x00\x00\x02', 64],
+             ('IPV6.DEV_PREFIX', 1): [b' \x01A\xd0\x03\x02"\x00', 64], 
+             ('IPV6.DEV_IID', 1): [b'\x00\x00\x00\x00\x00\x00\x13\xb3', 64], 
+             ('ICMPV6.TYPE', 1): [129, 8], 
+             ('ICMPV6.CODE', 1): [0, 8], 
+             ('ICMPV6.CKSUM', 1): [40272, 16], 
+             ('ICMPV6.IDENT', 1): [382, 16], 
+             ('ICMPV6.SEQNO', 1): [1, 16]} b'\x00' None
+\end{termc}             
+             
+IPv6 packets that arrives to the SCHC core and are not matching any compression rule are rejected.
+\begin{termc}[backgroundcolor=\color{palerod}, basicstyle=\ttfamily\tiny]
+schc compression rule None
+schc no-compression rule None
+schc rule for compression/no-compression not found
+protocol.py, schc_send, core_id:  udp:51.91.121.182:23628 device_id:  None sender_delay 0 destination udp:54.37.158.10:8888 position core
+\end{termc}
+
+\subsection{On the device}
+
+The program is launched, the same rules are loaded, the device ID is determined and when a rule 6/3 is received, this SCHC message is echoed.
+
+\begin{termc}[backgroundcolor=\color{gray!10}, basicstyle=\ttfamily\tiny]
+\$ sudo python3 ping_device2.py 
+****************************************
+Device: udp:54.37.158.10:8888
+/-------------------------\
+|Rule 6/3            110  |
+|---------------+---+--+--+------------------------------+-------------+----------------\
+|IPV6.VER       |  4| 1|BI|                             6|EQUAL        |NOT-SENT        |
+|IPV6.TC        |  8| 1|BI|                             0|EQUAL        |NOT-SENT        |
+|IPV6.FL        | 20| 1|BI|                             0|IGNORE       |NOT-SENT        |
+|IPV6.LEN       | 16| 1|BI|------------------------------|IGNORE       |COMPUTE-LENGTH  |
+|IPV6.NXT       |  8| 1|BI|                            58|EQUAL        |NOT-SENT        |
+|IPV6.HOP_LMT   |  8| 1|BI|                           255|IGNORE       |NOT-SENT        |
+|IPV6.DEV_PREFIX| 64| 1|BI|              200104701f2101d2|EQUAL        |NOT-SENT        |
+|IPV6.DEV_IID   | 64| 1|BI|              0000000000000002|EQUAL        |NOT-SENT        |
+|IPV6.APP_PREFIX| 64| 1|BI|------------------------------|IGNORE       |VALUE-SENT      |
+|IPV6.APP_IID   | 64| 1|BI|------------------------------|IGNORE       |VALUE-SENT      |
+|ICMPV6.TYPE    |  8| 1|DW|                           128|EQUAL        |NOT-SENT        |
+|ICMPV6.TYPE    |  8| 1|UP|                           129|EQUAL        |NOT-SENT        |
+|ICMPV6.CODE    |  8| 1|BI|                             0|EQUAL        |NOT-SENT        |
+|ICMPV6.CKSUM   | 16| 1|BI|                             0|IGNORE       |COMPUTE-CHECKSUM|
+|ICMPV6.IDENT   | 16| 1|BI|                             0|IGNORE       |VALUE-SENT      |
+|ICMPV6.SEQNO   | 16| 1|BI|                             0|IGNORE       |VALUE-SENT      |
+\---------------+---+--+--+------------------------------+-------------+----------------/
+/-------------------------\
+|Rule 12/11     00001100  |
+!=========================+=============================================================\
+!v Fragmentation mode : NoAck    header dtag 2 Window  0 FCN  3                     DW v!
+!v No Tile size specified                                                              v!
+!v RCS Algorithm: RCS_RFC8724                                                          v!
+\=======================================================================================/
+/-------------------------\
+|Rule 13/11     00001101  |
+!=========================+=============================================================\
+!^ Fragmentation mode : NoAck    header dtag 2 Window  0 FCN  3                     UP ^!
+!^ No Tile size specified                                                              ^!
+!^ RCS Algorithm: RCS_RFC8724                                                          ^!
+\=======================================================================================/
+device_id is udp:54.37.158.10:8888
+tunneled SCHC msg
+ping
+\end{termc}
